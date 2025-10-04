@@ -56,3 +56,7 @@ logs/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Test and development databases
+test.db
+yatra.db
