@@ -7,9 +7,8 @@ def test_health_check(client):
 
 
 def test_root_endpoint(client):
-    """Test the root endpoint"""
+    """Test the root endpoint returns HTML homepage"""
     response = client.get("/")
     assert response.status_code == 200
-    data = response.json()
-    assert "message" in data
-    assert "version" in data
+    assert response.headers["content-type"].startswith("text/html")
+    assert b"Yatra Platform" in response.content
