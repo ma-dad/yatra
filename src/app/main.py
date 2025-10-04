@@ -55,14 +55,18 @@ app.include_router(matches.router, prefix="/api/matches", tags=["Matches"])
 app.include_router(calendar.router, prefix="/api/calendar", tags=["Calendar"])
 
 # Mount static files if directory exists
-static_dir = os.path.join(os.path.dirname(__file__), "..", "..", "static")
+static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    """Root endpoint - serve homepage"""
+    static_index = os.path.join(os.path.dirname(__file__), "..", "static", "index.html")
+    if os.path.exists(static_index):
+        return FileResponse(static_index)
+    
     return {
         "message": "Yatra Platform API - Phase 1",
         "version": "1.0.0",
