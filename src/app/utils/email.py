@@ -14,37 +14,50 @@ def send_email(
     body: str,
     html_body: Optional[str] = None
 ) -> bool:
-    """Send email notification"""
-    
-    # Skip if email not configured
+    """Send email notification.
+
+    When ``settings.EMAIL_LOG_ONLY`` is *True* (the default) the message is
+    written to the application log instead of being delivered via SMTP.  Set
+    ``EMAIL_LOG_ONLY=false`` in the environment together with the SMTP_* vars
+    to enable real delivery.
+    """
+
+    # --- Log-only mode (default for dev / testing) --------------------------
+    if settings.EMAIL_LOG_ONLY:
+        logger.info(
+            "[EMAIL LOG-ONLY] To: %s | Subject: %s\n%s",
+            ", ".join(to_emails),
+            subject,
+            body,
+        )
+        return True
+
+    # --- Real SMTP delivery --------------------------------------------------
     if not settings.SMTP_HOST or not settings.SMTP_USER:
         logger.warning("Email not configured, skipping notification")
         return False
-    
+
     try:
-        # Create message
         msg = MIMEMultipart('alternative')
         msg['From'] = settings.SMTP_USER
         msg['To'] = ', '.join(to_emails)
         msg['Subject'] = subject
-        
-        # Add body
+
         text_part = MIMEText(body, 'plain')
         msg.attach(text_part)
-        
+
         if html_body:
             html_part = MIMEText(html_body, 'html')
             msg.attach(html_part)
-        
-        # Send email
+
         with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
             server.starttls()
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(msg)
-        
+
         logger.info(f"Email sent successfully to {to_emails}")
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to send email: {str(e)}")
         return False

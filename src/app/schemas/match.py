@@ -40,8 +40,9 @@ class MatchResponse(BaseModel):
 
 class MatchWithDetails(BaseModel):
     model_config = {"from_attributes": True}
-    
+
     match_id: str
+    status: MatchStatus
     compatibility_score: float
     request: dict
     user: dict

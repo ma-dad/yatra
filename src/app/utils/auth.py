@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from google.oauth2 import id_token
-from google.auth.transport import requests
 from app.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -28,16 +29,25 @@ def verify_token(token: str) -> Optional[dict]:
 
 
 def verify_google_token(token: str) -> Optional[dict]:
-    """Verify Google OAuth token and return user info"""
+    """Verify Google OAuth token and return user info.
+
+    This function is only called when ``settings.ENABLE_GOOGLE_AUTH`` is True.
+    When Google auth is disabled the caller should use the dev-login path
+    instead.
+    """
+    if not settings.ENABLE_GOOGLE_AUTH:
+        logger.warning("verify_google_token called but ENABLE_GOOGLE_AUTH is False")
+        return None
+
     try:
-        # Verify the token with Google
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+
         idinfo = id_token.verify_oauth2_token(
-            token, 
-            requests.Request(), 
+            token,
+            google_requests.Request(),
             settings.GOOGLE_CLIENT_ID
         )
-        
-        # ID token is valid, return user info
         return {
             "google_id": idinfo['sub'],
             "email": idinfo['email'],
@@ -45,5 +55,4 @@ def verify_google_token(token: str) -> Optional[dict]:
             "picture": idinfo.get('picture', '')
         }
     except ValueError:
-        # Invalid token
         return None

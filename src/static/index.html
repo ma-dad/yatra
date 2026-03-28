@@ -215,29 +215,81 @@
         </section>
 
         <!-- Technical Details -->
-        <section class="bg-white rounded-lg shadow-md p-8">
+        <section class="bg-white rounded-lg shadow-md p-8 mb-8">
             <h2 class="text-3xl font-bold text-gray-800 mb-6">Technical Details</h2>
             <div class="grid md:grid-cols-2 gap-8">
                 <div>
                     <h3 class="text-xl font-bold text-gray-700 mb-4">Technology Stack</h3>
                     <ul class="space-y-2 text-gray-600">
                         <li>✓ <strong>Backend:</strong> FastAPI (Python 3.11)</li>
-                        <li>✓ <strong>Database:</strong> SQLite (development)</li>
-                        <li>✓ <strong>Authentication:</strong> Google OAuth + JWT</li>
+                        <li>✓ <strong>Database:</strong> SQLite (development) / PostgreSQL (production)</li>
+                        <li>✓ <strong>Authentication:</strong> JWT (Google OAuth optional via config)</li>
                         <li>✓ <strong>API Docs:</strong> Swagger/OpenAPI</li>
-                        <li>✓ <strong>Email:</strong> SMTP Notifications</li>
+                        <li>✓ <strong>Email:</strong> SMTP or log-only mode</li>
+                        <li>✓ <strong>Container:</strong> Docker</li>
                     </ul>
                 </div>
                 <div>
                     <h3 class="text-xl font-bold text-gray-700 mb-4">Matching Algorithm</h3>
                     <ul class="space-y-2 text-gray-600">
-                        <li>• <strong>Flight Number:</strong> 30 points (exact match)</li>
-                        <li>• <strong>Route Match:</strong> 40 points (same airports)</li>
-                        <li>• <strong>Time Proximity:</strong> 30 points (±4 hours)</li>
-                        <li>• <strong>Language:</strong> 10 points (compatibility)</li>
-                        <li>• <strong>Categories:</strong> 10 points (assistance types)</li>
+                        <li>• <strong>Route Match:</strong> Same source &amp; destination (required)</li>
+                        <li>• <strong>Flight Match:</strong> Same flight number, OR</li>
+                        <li>• <strong>Time Match:</strong> Departure within ±<em>MATCH_TIME_BUFFER_HOURS</em> (default 4h)</li>
                     </ul>
-                    <p class="text-sm text-gray-500 mt-4">Minimum compatibility score: 50/100</p>
+                    <p class="text-sm text-gray-500 mt-4">
+                        TODO: optimise matching — search first (filter by route/date) before
+                        scanning all active requests to reduce database load.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- TODO / Roadmap -->
+        <section class="bg-yellow-50 border border-yellow-300 rounded-lg shadow-md p-8 mb-8">
+            <h2 class="text-3xl font-bold text-yellow-800 mb-4">📋 Developer TODO List</h2>
+            <p class="text-yellow-700 mb-6 text-sm">
+                This section tracks known improvements and planned features.
+            </p>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-lg font-bold text-yellow-800 mb-3">Matching &amp; Performance</h3>
+                    <ul class="space-y-2 text-yellow-900 text-sm list-disc ml-5">
+                        <li>Optimise matching logic: filter by route + date first, then compare individual requests instead of scanning all active records.</li>
+                        <li>Add full-text or indexed search on source/destination airports.</li>
+                        <li>Consider background job (e.g. APScheduler) to run periodic match sweeps instead of blocking the request cycle.</li>
+                    </ul>
+
+                    <h3 class="text-lg font-bold text-yellow-800 mt-6 mb-3">Admin APIs</h3>
+                    <ul class="space-y-2 text-yellow-900 text-sm list-disc ml-5">
+                        <li>Implement admin API endpoints:
+                            <ul class="ml-4 list-disc">
+                                <li>List all users and their profiles</li>
+                                <li>List all seek/volunteer requests with filters</li>
+                                <li>Modify any user's request on their behalf</li>
+                                <li>Delete users or their requests</li>
+                            </ul>
+                        </li>
+                        <li>Add role-based access control (ADMIN role) to protect admin endpoints.</li>
+                        <li>Add admin test flow to the shell test suite.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-yellow-800 mb-3">Safety &amp; UX</h3>
+                    <ul class="space-y-2 text-yellow-900 text-sm list-disc ml-5">
+                        <li>User verification / identity check before allowing requests.</li>
+                        <li>Feedback &amp; rating system after completed matches.</li>
+                        <li>Implement refresh-token flow for longer sessions.</li>
+                        <li>Profile completion endpoint (languages, specialties, emergency contact).</li>
+                    </ul>
+
+                    <h3 class="text-lg font-bold text-yellow-800 mt-6 mb-3">Infrastructure</h3>
+                    <ul class="space-y-2 text-yellow-900 text-sm list-disc ml-5">
+                        <li>Migrate to PostgreSQL with Alembic migrations for production.</li>
+                        <li>Add docker-compose with PostgreSQL service.</li>
+                        <li>CI pipeline (lint + test) via GitHub Actions.</li>
+                        <li>Rate limiting on public-facing endpoints.</li>
+                        <li>Restrict CORS <code>allow_origins</code> in production config.</li>
+                    </ul>
                 </div>
             </div>
         </section>
