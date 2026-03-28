@@ -6,7 +6,7 @@ from app.schemas.user import UserType
 from app.models.user import User, Seeker, Volunteer
 from app.utils.auth import verify_google_token, create_access_token
 from app.config import settings
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ async def google_auth(
             email=google_user['email'],
             user_type=auth_request.user_type,
             profile=profile,
-            last_login=datetime.utcnow()
+            last_login=datetime.now(timezone.utc).replace(tzinfo=None)
         )
         db.add(user)
         db.flush()
@@ -77,7 +77,7 @@ async def google_auth(
         db.refresh(user)
         logger.info(f"Created new user: {user.id} ({user.email})")
     else:
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(timezone.utc).replace(tzinfo=None)
         _ensure_seeker_volunteer_records(user, db)
         db.commit()
         logger.info(f"User logged in: {user.id} ({user.email})")
@@ -139,7 +139,7 @@ async def dev_login(
             email=login_request.email,
             user_type=login_request.user_type,
             profile=profile,
-            last_login=datetime.utcnow()
+            last_login=datetime.now(timezone.utc).replace(tzinfo=None)
         )
         db.add(user)
         db.flush()
@@ -148,7 +148,7 @@ async def dev_login(
         db.refresh(user)
         logger.info(f"Dev login: created user {user.id} ({user.email})")
     else:
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(timezone.utc).replace(tzinfo=None)
         _ensure_seeker_volunteer_records(user, db)
         db.commit()
         logger.info(f"Dev login: user {user.id} ({user.email})")

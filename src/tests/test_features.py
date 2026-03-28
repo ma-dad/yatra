@@ -11,7 +11,7 @@ Tests for the new features introduced in the requirements:
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -58,9 +58,9 @@ def client():
 # Helpers
 # ---------------------------------------------------------------------------
 
-FUTURE_TIME = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
-FAR_FUTURE = (datetime.utcnow() + timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S")
-PAST_TIME = (datetime.utcnow() - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S")
+FUTURE_TIME = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
+FAR_FUTURE = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S")
+PAST_TIME = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def dev_login(client, email: str, user_type: str = "seeker", name: str = "Test User") -> str:
@@ -216,9 +216,9 @@ class TestMatchingLogic:
         seeker_token = dev_login(client, "seeker_time@example.com", "seeker")
         vol_token = dev_login(client, "vol_time@example.com", "volunteer")
 
-        t1 = (datetime.utcnow() + timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%S")
+        t1 = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%S")
         # Volunteer departs 2 hours later (within default 4h buffer)
-        t2 = (datetime.utcnow() + timedelta(days=5, hours=2)).strftime("%Y-%m-%dT%H:%M:%S")
+        t2 = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=5, hours=2)).strftime("%Y-%m-%dT%H:%M:%S")
 
         client.post("/api/requests/seek",
                     json=seek_payload("XX1", travel_time=t1),
@@ -235,8 +235,8 @@ class TestMatchingLogic:
         seeker_token = dev_login(client, "seeker_far@example.com", "seeker")
         vol_token = dev_login(client, "vol_far@example.com", "volunteer")
 
-        t1 = (datetime.utcnow() + timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%S")
-        t2 = (datetime.utcnow() + timedelta(days=5, hours=6)).strftime("%Y-%m-%dT%H:%M:%S")
+        t1 = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%S")
+        t2 = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=5, hours=6)).strftime("%Y-%m-%dT%H:%M:%S")
 
         client.post("/api/requests/seek",
                     json=seek_payload("YY1", travel_time=t1),
@@ -259,14 +259,14 @@ class TestRequestLimits:
         limit = settings.SEEKER_REQUEST_LIMIT
 
         for i in range(limit):
-            t = (datetime.utcnow() + timedelta(days=10 + i)).strftime("%Y-%m-%dT%H:%M:%S")
+            t = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=10 + i)).strftime("%Y-%m-%dT%H:%M:%S")
             resp = client.post("/api/requests/seek",
                                json=seek_payload(f"LM{i}", travel_time=t),
                                headers=auth_headers(token))
             assert resp.status_code == 201
 
         # (limit+1)-th request should be rejected
-        t = (datetime.utcnow() + timedelta(days=20)).strftime("%Y-%m-%dT%H:%M:%S")
+        t = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=20)).strftime("%Y-%m-%dT%H:%M:%S")
         resp = client.post("/api/requests/seek",
                            json=seek_payload("LMOVER", travel_time=t),
                            headers=auth_headers(token))
@@ -277,13 +277,13 @@ class TestRequestLimits:
         limit = settings.VOLUNTEER_REQUEST_LIMIT
 
         for i in range(limit):
-            t = (datetime.utcnow() + timedelta(days=10 + i)).strftime("%Y-%m-%dT%H:%M:%S")
+            t = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=10 + i)).strftime("%Y-%m-%dT%H:%M:%S")
             resp = client.post("/api/requests/volunteer",
                                json=volunteer_payload(f"VL{i}", travel_time=t),
                                headers=auth_headers(token))
             assert resp.status_code == 201
 
-        t = (datetime.utcnow() + timedelta(days=20)).strftime("%Y-%m-%dT%H:%M:%S")
+        t = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=20)).strftime("%Y-%m-%dT%H:%M:%S")
         resp = client.post("/api/requests/volunteer",
                            json=volunteer_payload("VLOVER", travel_time=t),
                            headers=auth_headers(token))

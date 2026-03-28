@@ -74,9 +74,9 @@ async def discover_matches(
         vol_query = vol_query.filter(Match.volunteer_request_id == request_id)
 
     # Avoid duplicates when the user is matched with themselves (same user_id on both sides)
-    existing_ids = {m.match_id for m in result}
+    existing_match_ids = {m.match_id for m in result}
     for match in vol_query.all():
-        if match.id in existing_ids:
+        if match.id in existing_match_ids:
             continue
 
         seek_request = db.query(SeekRequest).filter(

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.database import get_db
 from app.dependencies import get_current_user, get_current_seeker, get_current_volunteer
 from app.models.user import User
@@ -28,7 +28,7 @@ matching_service = MatchingService()
 
 def _auto_expire_requests(db: Session):
     """Mark requests whose travel time has passed as EXPIRED."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     for Model in (SeekRequest, VolunteerRequest):
         expired = db.query(Model).filter(
             Model.status == RequestStatus.ACTIVE,

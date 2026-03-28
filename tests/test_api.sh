@@ -170,7 +170,7 @@ cyan "\n[FLOW 5] Dual role – seeker acts as volunteer"
 
 TRAVEL_TIME=$(date -u -d '+7 days' +%Y-%m-%dT%H:%M:%S 2>/dev/null || \
               date -u -v+7d +%Y-%m-%dT%H:%M:%S 2>/dev/null || \
-              python3 -c "from datetime import datetime,timedelta; print((datetime.utcnow()+timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%S'))")
+              python3 -c "from datetime import datetime,timedelta,timezone; print((datetime.now(timezone.utc).replace(tzinfo=None)+timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%S'))")
 
 resp=$(api POST /api/requests/volunteer \
     "{
@@ -288,7 +288,7 @@ SEEKER2_TOKEN=$(echo "$resp" | jq -r '.data.token // empty')
 
 TRAVEL_TIME2=$(date -u -d '+8 days' +%Y-%m-%dT%H:%M:%S 2>/dev/null || \
                date -u -v+8d +%Y-%m-%dT%H:%M:%S 2>/dev/null || \
-               python3 -c "from datetime import datetime,timedelta; print((datetime.utcnow()+timedelta(days=8)).strftime('%Y-%m-%dT%H:%M:%S'))")
+               python3 -c "from datetime import datetime,timedelta,timezone; print((datetime.now(timezone.utc).replace(tzinfo=None)+timedelta(days=8)).strftime('%Y-%m-%dT%H:%M:%S'))")
 
 resp=$(api POST /api/requests/seek \
     "{
@@ -391,7 +391,7 @@ LIMIT_TOKEN=$(echo "$resp" | jq -r '.data.token // empty')
 LIMIT=5
 
 TRAVEL_BASE=$(date -u -d '+30 days' +%Y-%m-%dT%H:%M:%S 2>/dev/null || \
-              python3 -c "from datetime import datetime,timedelta; print((datetime.utcnow()+timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%S'))")
+              python3 -c "from datetime import datetime,timedelta,timezone; print((datetime.now(timezone.utc).replace(tzinfo=None)+timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%S'))")
 
 for i in $(seq 1 $LIMIT); do
     api POST /api/requests/seek \

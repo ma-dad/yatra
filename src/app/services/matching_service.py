@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.models.request import SeekRequest, VolunteerRequest, RequestStatus
 from app.models.match import Match, MatchStatus
@@ -177,7 +177,7 @@ class MatchingService:
         match.status = MatchStatus.ACCEPTED
         match.communication = {
             "contact_exchanged": True,
-            "last_message_at": datetime.utcnow().isoformat()
+            "last_message_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         }
         db.commit()
         db.refresh(match)
