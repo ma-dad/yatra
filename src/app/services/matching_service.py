@@ -1,140 +1,197 @@
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.models.request import SeekRequest, VolunteerRequest, RequestStatus
 from app.models.match import Match, MatchStatus
-from app.models.user import User
+from app.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class MatchingService:
-    """Service for matching seekers with volunteers"""
-    
-    def calculate_compatibility_score(
-        self, 
-        seek_request: SeekRequest, 
-        volunteer_request: VolunteerRequest
-    ) -> float:
-        """Calculate compatibility score between a seek and volunteer request"""
-        
-        score = 0.0
+    """Service for matching seekers with volunteers.
+
+    Matching logic (simple, non-point-based):
+    A seek request and a volunteer request are considered a match when:
+      1. They share the same source AND destination airport (same trajectory), AND
+      2. Either:
+         a. They have the same flight number, OR
+         b. Their departure times are within MATCH_TIME_BUFFER_HOURS of each other.
+
+    The buffer is read from ``settings.MATCH_TIME_BUFFER_HOURS`` so it can be
+    tuned via environment variable without code changes.
+    """
+
+    # ------------------------------------------------------------------
+    # Core matching predicate
+    # ------------------------------------------------------------------
+
+    def is_match(
+        self,
+        seek_request: SeekRequest,
+        volunteer_request: VolunteerRequest,
+    ) -> bool:
+        """Return True if the two requests are a match."""
         seek_travel = seek_request.travel_details
         vol_travel = volunteer_request.travel_details
-        
-        # Route match (40 points)
-        if (seek_travel.get('source_airport') == vol_travel.get('source_airport') and
-            seek_travel.get('destination_airport') == vol_travel.get('destination_airport')):
-            score += 40
-        
-        # Flight number match (30 points) - highest priority if same flight
-        if seek_travel.get('flight_number') == vol_travel.get('flight_number'):
-            score += 30
-        else:
-            # Time proximity (30 points if no flight match)
+
+        # Condition 1: same trajectory (source + destination)
+        same_route = (
+            seek_travel.get('source_airport') == vol_travel.get('source_airport')
+            and seek_travel.get('destination_airport') == vol_travel.get('destination_airport')
+        )
+        if not same_route:
+            return False
+
+        # Condition 2a: same flight number
+        seek_flight = seek_travel.get('flight_number', '')
+        vol_flight = vol_travel.get('flight_number', '')
+        if seek_flight and vol_flight and seek_flight == vol_flight:
+            return True
+
+        # Condition 2b: departure times within the configured buffer
+        try:
             seek_time = datetime.fromisoformat(seek_travel.get('travel_time', ''))
             vol_time = datetime.fromisoformat(vol_travel.get('travel_time', ''))
-            time_diff = abs((seek_time - vol_time).total_seconds() / 3600)  # hours
-            
-            if time_diff <= 4:  # Within 4 hours
-                score += 30 * (1 - time_diff / 4)
-        
-        # Language match (20 points) - check if volunteer speaks seeker's language
-        # Note: This would need user profile data, simplified for now
-        score += 10  # Basic language compatibility assumption
-        
-        # Category match (10 points) - check if assistance types align
-        seek_categories = set(seek_request.assistance_needed.get('categories', []))
-        vol_categories = set(volunteer_request.assistance_offered.get('categories', []))
-        if seek_categories & vol_categories:  # Any intersection
-            score += 10
-        
-        return min(score, 100.0)  # Cap at 100
-    
+            hours_diff = abs((seek_time - vol_time).total_seconds() / 3600)
+            if hours_diff <= settings.MATCH_TIME_BUFFER_HOURS:
+                return True
+        except (ValueError, TypeError):
+            pass
+
+        return False
+
+    # ------------------------------------------------------------------
+    # Match discovery helpers
+    # ------------------------------------------------------------------
+
     def find_matches(
-        self, 
-        seek_request_id: str, 
+        self,
+        seek_request_id: str,
         db: Session,
-        min_score: float = 50.0
     ) -> List[Match]:
-        """Find compatible volunteer requests for a seek request"""
-        
+        """Find compatible volunteer requests for a seek request and persist
+        new Match records.  Called whenever a seek request is created or
+        updated.
+        """
         seek_request = db.query(SeekRequest).filter(
             SeekRequest.id == seek_request_id,
             SeekRequest.status == RequestStatus.ACTIVE
         ).first()
-        
+
         if not seek_request:
             return []
-        
-        # Find active volunteer requests
+
         volunteer_requests = db.query(VolunteerRequest).filter(
             VolunteerRequest.status == RequestStatus.ACTIVE
         ).all()
-        
-        matches = []
+
+        new_matches: List[Match] = []
         for vol_request in volunteer_requests:
-            score = self.calculate_compatibility_score(seek_request, vol_request)
-            
-            if score >= min_score:
-                # Check if match already exists
-                existing_match = db.query(Match).filter(
-                    Match.seek_request_id == seek_request_id,
-                    Match.volunteer_request_id == vol_request.id
-                ).first()
-                
-                if not existing_match:
-                    match = Match(
-                        seek_request_id=seek_request_id,
-                        volunteer_request_id=vol_request.id,
-                        match_score=score,
-                        status=MatchStatus.PENDING
-                    )
-                    db.add(match)
-                    matches.append(match)
-        
+            if not self.is_match(seek_request, vol_request):
+                continue
+
+            existing = db.query(Match).filter(
+                Match.seek_request_id == seek_request_id,
+                Match.volunteer_request_id == vol_request.id
+            ).first()
+
+            if not existing:
+                match = Match(
+                    seek_request_id=seek_request_id,
+                    volunteer_request_id=vol_request.id,
+                    match_score=1.0,
+                    status=MatchStatus.PENDING
+                )
+                db.add(match)
+                new_matches.append(match)
+
         db.commit()
-        logger.info(f"Found {len(matches)} matches for seek request {seek_request_id}")
-        return matches
-    
-    def accept_match(
-        self, 
-        match_id: str, 
-        db: Session
-    ) -> Optional[Match]:
+        logger.info(
+            "Found %d new matches for seek request %s",
+            len(new_matches),
+            seek_request_id,
+        )
+        return new_matches
+
+    def find_matches_for_volunteer(
+        self,
+        volunteer_request_id: str,
+        db: Session,
+    ) -> List[Match]:
+        """Find compatible seek requests for a volunteer request and persist new
+        Match records.  Called whenever a volunteer request is created or
+        updated so that existing seekers are not missed.
+        """
+        vol_request = db.query(VolunteerRequest).filter(
+            VolunteerRequest.id == volunteer_request_id,
+            VolunteerRequest.status == RequestStatus.ACTIVE
+        ).first()
+
+        if not vol_request:
+            return []
+
+        seek_requests = db.query(SeekRequest).filter(
+            SeekRequest.status == RequestStatus.ACTIVE
+        ).all()
+
+        new_matches: List[Match] = []
+        for seek_request in seek_requests:
+            if not self.is_match(seek_request, vol_request):
+                continue
+
+            existing = db.query(Match).filter(
+                Match.seek_request_id == seek_request.id,
+                Match.volunteer_request_id == volunteer_request_id
+            ).first()
+
+            if not existing:
+                match = Match(
+                    seek_request_id=seek_request.id,
+                    volunteer_request_id=volunteer_request_id,
+                    match_score=1.0,
+                    status=MatchStatus.PENDING
+                )
+                db.add(match)
+                new_matches.append(match)
+
+        db.commit()
+        logger.info(
+            "Found %d new matches for volunteer request %s",
+            len(new_matches),
+            volunteer_request_id,
+        )
+        return new_matches
+
+    # ------------------------------------------------------------------
+    # Match state transitions
+    # ------------------------------------------------------------------
+
+    def accept_match(self, match_id: str, db: Session) -> Optional[Match]:
         """Accept a match"""
-        
         match = db.query(Match).filter(Match.id == match_id).first()
         if not match:
             return None
-        
+
         match.status = MatchStatus.ACCEPTED
         match.communication = {
             "contact_exchanged": True,
-            "last_message_at": datetime.utcnow().isoformat()
+            "last_message_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         }
-        
         db.commit()
         db.refresh(match)
-        
         logger.info(f"Match {match_id} accepted")
         return match
-    
-    def reject_match(
-        self, 
-        match_id: str, 
-        db: Session
-    ) -> Optional[Match]:
+
+    def reject_match(self, match_id: str, db: Session) -> Optional[Match]:
         """Reject a match"""
-        
         match = db.query(Match).filter(Match.id == match_id).first()
         if not match:
             return None
-        
+
         match.status = MatchStatus.REJECTED
         db.commit()
         db.refresh(match)
-        
         logger.info(f"Match {match_id} rejected")
         return match

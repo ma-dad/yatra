@@ -21,18 +21,16 @@ async def get_calendar_events(
     db: Session = Depends(get_db)
 ):
     """
-    Get calendar events for the current user within a date range
-    Shows user's own travel plans and potential matches
+    Get calendar events for the current authenticated user within a date range.
+    Shows user's own travel plans and potential matches.
     """
-    
+
     query = db.query(CalendarEvent).filter(CalendarEvent.user_id == current_user.id)
-    
-    # Filter by date range if provided
+    events = query.all()
+
     if start_date:
         try:
             start_dt = datetime.fromisoformat(start_date)
-            # Filter events where travel_time >= start_date
-            events = query.all()
             events = [e for e in events if datetime.fromisoformat(
                 e.travel_details.get('travel_time', '')) >= start_dt]
         except ValueError:
@@ -40,13 +38,10 @@ async def get_calendar_events(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid start_date format. Use ISO format."
             )
-    else:
-        events = query.all()
-    
+
     if end_date:
         try:
             end_dt = datetime.fromisoformat(end_date)
-            # Filter events where travel_time <= end_date
             events = [e for e in events if datetime.fromisoformat(
                 e.travel_details.get('travel_time', '')) <= end_dt]
         except ValueError:
@@ -54,15 +49,13 @@ async def get_calendar_events(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid end_date format. Use ISO format."
             )
-    
-    # Sort by travel time
+
     events.sort(key=lambda e: e.travel_details.get('travel_time', ''))
-    
     return events
 
 
-@router.get("/public", response_model=List[CalendarEventResponse])
-async def get_public_calendar_events(
+@router.get("/all", response_model=List[CalendarEventResponse])
+async def get_all_calendar_events(
     start_date: Optional[str] = Query(None, description="Start date in ISO format"),
     end_date: Optional[str] = Query(None, description="End date in ISO format"),
     airport: Optional[str] = Query(None, description="Filter by airport (source or destination)"),
@@ -70,18 +63,16 @@ async def get_public_calendar_events(
     db: Session = Depends(get_db)
 ):
     """
-    Get public calendar events from all users
-    Useful for seekers to find volunteers and vice versa
+    Get calendar events from all users (requires authentication).
+
+    The calendar is not publicly accessible — only authenticated users may
+    browse other users' travel plans to discover potential matches.
     """
-    
-    query = db.query(CalendarEvent).filter(CalendarEvent.is_public == "true")
-    
-    # Exclude current user's events
-    query = query.filter(CalendarEvent.user_id != current_user.id)
-    
+
+    # Exclude the current user's own events (they can see those via GET /)
+    query = db.query(CalendarEvent).filter(CalendarEvent.user_id != current_user.id)
     events = query.all()
-    
-    # Filter by date range if provided
+
     if start_date:
         try:
             start_dt = datetime.fromisoformat(start_date)
@@ -92,7 +83,7 @@ async def get_public_calendar_events(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid start_date format. Use ISO format."
             )
-    
+
     if end_date:
         try:
             end_dt = datetime.fromisoformat(end_date)
@@ -103,15 +94,12 @@ async def get_public_calendar_events(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid end_date format. Use ISO format."
             )
-    
-    # Filter by airport if provided
+
     if airport:
         events = [e for e in events if (
             e.travel_details.get('source_airport') == airport or
             e.travel_details.get('destination_airport') == airport
         )]
-    
-    # Sort by travel time
+
     events.sort(key=lambda e: e.travel_details.get('travel_time', ''))
-    
     return events

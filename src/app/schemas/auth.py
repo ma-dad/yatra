@@ -9,6 +9,13 @@ class GoogleAuthRequest(BaseModel):
     profile: Optional[SeekerProfile | VolunteerProfile] = None
 
 
+class DevLoginRequest(BaseModel):
+    """Dev/test login request - only available when ENABLE_GOOGLE_AUTH is False."""
+    email: EmailStr
+    name: Optional[str] = None
+    user_type: UserType = UserType.SEEKER
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
