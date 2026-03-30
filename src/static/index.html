@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yatra - Community Travel Assistance Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .hero-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="hero-gradient text-white shadow-lg">
+        <div class="container mx-auto px-6 py-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-bold mb-2">Yatra Platform</h1>
+                    <p class="text-xl text-purple-100">Community Travel Assistance - Phase 1</p>
+                </div>
+                <div>
+                    <a href="/api/docs" target="_blank" class="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition">
+                        API Documentation
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-12">
+        <!-- Welcome Section -->
+        <section class="bg-white rounded-lg shadow-md p-8 mb-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">Welcome to Yatra! 🌍</h2>
+            <p class="text-gray-600 text-lg mb-6">
+                Yatra connects travelers who need assistance with volunteers willing to help during their journeys. 
+                Whether you're seeking help or offering support, our platform makes travel more accessible for everyone.
+            </p>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="border border-purple-200 rounded-lg p-6 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold text-purple-600 mb-3">🙋 Need Help?</h3>
+                    <p class="text-gray-600 mb-4">
+                        Register as a <strong>Seeker</strong> to find volunteers who can assist you during your travels.
+                    </p>
+                    <ul class="text-gray-600 space-y-2">
+                        <li>✓ Find travel companions on your route</li>
+                        <li>✓ Get help with navigation and immigration</li>
+                        <li>✓ Language assistance and support</li>
+                    </ul>
+                </div>
+                <div class="border border-purple-200 rounded-lg p-6 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold text-purple-600 mb-3">🤝 Want to Help?</h3>
+                    <p class="text-gray-600 mb-4">
+                        Register as a <strong>Volunteer</strong> to offer assistance to travelers on your routes.
+                    </p>
+                    <ul class="text-gray-600 space-y-2">
+                        <li>✓ Help fellow travelers during your journey</li>
+                        <li>✓ Offer language and navigation support</li>
+                        <li>✓ Build community connections</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Phase 1 Features</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Feature 1 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="text-4xl mb-4">👤</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">User Registration</h3>
+                    <p class="text-gray-600">
+                        Register as a seeker or volunteer using Google OAuth authentication. Secure and simple.
+                    </p>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="text-4xl mb-4">🎯</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Smart Matching</h3>
+                    <p class="text-gray-600">
+                        Our algorithm matches seekers with volunteers based on flight details, routes, and timing.
+                    </p>
+                </div>
+                
+                <!-- Feature 3 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="text-4xl mb-4">📅</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Calendar View</h3>
+                    <p class="text-gray-600">
+                        View travel plans in advance and coordinate with others traveling on similar dates.
+                    </p>
+                </div>
+                
+                <!-- Feature 4 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="text-4xl mb-4">✈️</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Request Management</h3>
+                    <p class="text-gray-600">
+                        Create, update, and manage your travel assistance requests with ease.
+                    </p>
+                </div>
+                
+                <!-- Feature 5 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="text-4xl mb-4">📧</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Notifications</h3>
+                    <p class="text-gray-600">
+                        Receive email notifications when matches are found and contact details are exchanged.
+                    </p>
+                </div>
+                
+                <!-- Feature 6 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="text-4xl mb-4">🔒</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Privacy & Security</h3>
+                    <p class="text-gray-600">
+                        Contact information shared only after match acceptance. Your privacy is our priority.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- API Endpoints Section -->
+        <section class="bg-white rounded-lg shadow-md p-8 mb-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">API Endpoints</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endpoint</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">POST</td>
+                            <td class="px-6 py-4 text-sm text-gray-900 font-mono">/api/auth/google</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">Login/Register with Google OAuth</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">POST</td>
+                            <td class="px-6 py-4 text-sm text-gray-900 font-mono">/api/requests/seek</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">Create a seek request</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">POST</td>
+                            <td class="px-6 py-4 text-sm text-gray-900 font-mono">/api/requests/volunteer</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">Create a volunteer request</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">GET</td>
+                            <td class="px-6 py-4 text-sm text-gray-900 font-mono">/api/matches/discover</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">Discover matches for your requests</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">GET</td>
+                            <td class="px-6 py-4 text-sm text-gray-900 font-mono">/api/calendar/</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">View your calendar events</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">POST</td>
+                            <td class="px-6 py-4 text-sm text-gray-900 font-mono">/api/matches/{id}/accept</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">Accept a match (volunteers)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-6 text-center">
+                <a href="/api/docs" target="_blank" class="inline-block bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition">
+                    View Complete API Documentation →
+                </a>
+            </div>
+        </section>
+
+        <!-- Getting Started Section -->
+        <section class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-8 mb-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Getting Started</h2>
+            <div class="max-w-3xl mx-auto">
+                <ol class="space-y-4 text-gray-700">
+                    <li class="flex items-start">
+                        <span class="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">1</span>
+                        <div>
+                            <strong class="text-lg">Authenticate with Google OAuth</strong>
+                            <p class="text-gray-600">Use the <code class="bg-white px-2 py-1 rounded">/api/auth/google</code> endpoint to register or login.</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">2</span>
+                        <div>
+                            <strong class="text-lg">Create a Request</strong>
+                            <p class="text-gray-600">Post your travel details as a seek or volunteer request with flight information.</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">3</span>
+                        <div>
+                            <strong class="text-lg">Discover Matches</strong>
+                            <p class="text-gray-600">Our algorithm will find compatible travelers and notify you via email.</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">4</span>
+                        <div>
+                            <strong class="text-lg">Accept Match & Connect</strong>
+                            <p class="text-gray-600">Volunteers accept matches, and contact details are securely exchanged.</p>
+                        </div>
+                    </li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- Technical Details -->
+        <section class="bg-white rounded-lg shadow-md p-8 mb-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Technical Details</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-700 mb-4">Technology Stack</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>✓ <strong>Backend:</strong> FastAPI (Python 3.11)</li>
+                        <li>✓ <strong>Database:</strong> SQLite (development) / PostgreSQL (production)</li>
+                        <li>✓ <strong>Authentication:</strong> JWT (Google OAuth optional via config)</li>
+                        <li>✓ <strong>API Docs:</strong> Swagger/OpenAPI</li>
+                        <li>✓ <strong>Email:</strong> SMTP or log-only mode</li>
+                        <li>✓ <strong>Container:</strong> Docker</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-700 mb-4">Matching Algorithm</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>• <strong>Route Match:</strong> Same source &amp; destination (required)</li>
+                        <li>• <strong>Flight Match:</strong> Same flight number, OR</li>
+                        <li>• <strong>Time Match:</strong> Departure within ±<em>MATCH_TIME_BUFFER_HOURS</em> (default 4h)</li>
+                    </ul>
+                    <p class="text-sm text-gray-500 mt-4">
+                        TODO: optimise matching — search first (filter by route/date) before
+                        scanning all active requests to reduce database load.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- TODO / Roadmap -->
+        <section class="bg-yellow-50 border border-yellow-300 rounded-lg shadow-md p-8 mb-8">
+            <h2 class="text-3xl font-bold text-yellow-800 mb-4">📋 Developer TODO List</h2>
+            <p class="text-yellow-700 mb-6 text-sm">
+                This section tracks known improvements and planned features.
+            </p>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-lg font-bold text-yellow-800 mb-3">Matching &amp; Performance</h3>
+                    <ul class="space-y-2 text-yellow-900 text-sm list-disc ml-5">
+                        <li>Optimise matching logic: filter by route + date first, then compare individual requests instead of scanning all active records.</li>
+                        <li>Add full-text or indexed search on source/destination airports.</li>
+                        <li>Consider background job (e.g. APScheduler) to run periodic match sweeps instead of blocking the request cycle.</li>
+                    </ul>
+
+                    <h3 class="text-lg font-bold text-yellow-800 mt-6 mb-3">Admin APIs</h3>
+                    <ul class="space-y-2 text-yellow-900 text-sm list-disc ml-5">
+                        <li>Implement admin API endpoints:
+                            <ul class="ml-4 list-disc">
+                                <li>List all users and their profiles</li>
+                                <li>List all seek/volunteer requests with filters</li>
+                                <li>Modify any user's request on their behalf</li>
+                                <li>Delete users or their requests</li>
+                            </ul>
+                        </li>
+                        <li>Add role-based access control (ADMIN role) to protect admin endpoints.</li>
+                        <li>Add admin test flow to the shell test suite.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-yellow-800 mb-3">Safety &amp; UX</h3>
+                    <ul class="space-y-2 text-yellow-900 text-sm list-disc ml-5">
+                        <li>User verification / identity check before allowing requests.</li>
+                        <li>Feedback &amp; rating system after completed matches.</li>
+                        <li>Implement refresh-token flow for longer sessions.</li>
+                        <li>Profile completion endpoint (languages, specialties, emergency contact).</li>
+                    </ul>
+
+                    <h3 class="text-lg font-bold text-yellow-800 mt-6 mb-3">Infrastructure</h3>
+                    <ul class="space-y-2 text-yellow-900 text-sm list-disc ml-5">
+                        <li>Migrate to PostgreSQL with Alembic migrations for production.</li>
+                        <li>Add docker-compose with PostgreSQL service.</li>
+                        <li>CI pipeline (lint + test) via GitHub Actions.</li>
+                        <li>Rate limiting on public-facing endpoints.</li>
+                        <li>Restrict CORS <code>allow_origins</code> in production config.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white mt-16 py-8">
+        <div class="container mx-auto px-6 text-center">
+            <p class="mb-2">Yatra Platform - Phase 1: Building the Foundation</p>
+            <p class="text-gray-400 text-sm">Community-powered travel assistance for everyone</p>
+            <div class="mt-4">
+                <a href="/api/docs" class="text-purple-400 hover:text-purple-300 mx-3">API Docs</a>
+                <a href="/api/redoc" class="text-purple-400 hover:text-purple-300 mx-3">ReDoc</a>
+                <a href="https://github.com/ma-dad/yatra" class="text-purple-400 hover:text-purple-300 mx-3">GitHub</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
