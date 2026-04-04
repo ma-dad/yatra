@@ -154,7 +154,7 @@ Interactive API documentation is automatically generated and available at:
 
 ### Calendar
 - `GET /api/calendar/` - Get user's calendar events
-- `GET /api/calendar/public` - Get public calendar events
+- `GET /api/calendar/all` - Browse all authenticated users' calendar events
 
 ## Database
 

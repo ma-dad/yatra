@@ -101,7 +101,7 @@ class MatchingService:
                 match = Match(
                     seek_request_id=seek_request_id,
                     volunteer_request_id=vol_request.id,
-                    match_score=1.0,
+                    match_score=1.0,  # Boolean match indicator; 1.0 = match found
                     status=MatchStatus.PENDING
                 )
                 db.add(match)
@@ -150,7 +150,7 @@ class MatchingService:
                 match = Match(
                     seek_request_id=seek_request.id,
                     volunteer_request_id=volunteer_request_id,
-                    match_score=1.0,
+                    match_score=1.0,  # Boolean match indicator; 1.0 = match found
                     status=MatchStatus.PENDING
                 )
                 db.add(match)

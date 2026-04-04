@@ -28,6 +28,6 @@ class CalendarEventResponse(BaseModel):
     event_type: str
     title: str
     travel_details: dict
-    is_public: str
+    is_public: bool
     created_at: datetime
     updated_at: datetime

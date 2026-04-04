@@ -30,9 +30,16 @@ async def get_calendar_events(
 
     if start_date:
         try:
-            start_dt = datetime.fromisoformat(start_date)
-            events = [e for e in events if datetime.fromisoformat(
-                e.travel_details.get('travel_time', '')) >= start_dt]
+            start_dt = datetime.fromisoformat(start_date).replace(tzinfo=None)
+            filtered = []
+            for e in events:
+                try:
+                    et = datetime.fromisoformat(e.travel_details.get('travel_time', '')).replace(tzinfo=None)
+                    if et >= start_dt:
+                        filtered.append(e)
+                except (ValueError, TypeError):
+                    pass
+            events = filtered
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -41,16 +48,29 @@ async def get_calendar_events(
 
     if end_date:
         try:
-            end_dt = datetime.fromisoformat(end_date)
-            events = [e for e in events if datetime.fromisoformat(
-                e.travel_details.get('travel_time', '')) <= end_dt]
+            end_dt = datetime.fromisoformat(end_date).replace(tzinfo=None)
+            filtered = []
+            for e in events:
+                try:
+                    et = datetime.fromisoformat(e.travel_details.get('travel_time', '')).replace(tzinfo=None)
+                    if et <= end_dt:
+                        filtered.append(e)
+                except (ValueError, TypeError):
+                    pass
+            events = filtered
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid end_date format. Use ISO format."
             )
 
-    events.sort(key=lambda e: e.travel_details.get('travel_time', ''))
+    def _sort_key(e):
+        try:
+            return datetime.fromisoformat(e.travel_details.get('travel_time', '')).replace(tzinfo=None)
+        except (ValueError, TypeError):
+            return datetime.min
+
+    events.sort(key=_sort_key)
     return events
 
 
@@ -75,9 +95,16 @@ async def get_all_calendar_events(
 
     if start_date:
         try:
-            start_dt = datetime.fromisoformat(start_date)
-            events = [e for e in events if datetime.fromisoformat(
-                e.travel_details.get('travel_time', '')) >= start_dt]
+            start_dt = datetime.fromisoformat(start_date).replace(tzinfo=None)
+            filtered = []
+            for e in events:
+                try:
+                    et = datetime.fromisoformat(e.travel_details.get('travel_time', '')).replace(tzinfo=None)
+                    if et >= start_dt:
+                        filtered.append(e)
+                except (ValueError, TypeError):
+                    pass
+            events = filtered
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -86,9 +113,16 @@ async def get_all_calendar_events(
 
     if end_date:
         try:
-            end_dt = datetime.fromisoformat(end_date)
-            events = [e for e in events if datetime.fromisoformat(
-                e.travel_details.get('travel_time', '')) <= end_dt]
+            end_dt = datetime.fromisoformat(end_date).replace(tzinfo=None)
+            filtered = []
+            for e in events:
+                try:
+                    et = datetime.fromisoformat(e.travel_details.get('travel_time', '')).replace(tzinfo=None)
+                    if et <= end_dt:
+                        filtered.append(e)
+                except (ValueError, TypeError):
+                    pass
+            events = filtered
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -101,5 +135,11 @@ async def get_all_calendar_events(
             e.travel_details.get('destination_airport') == airport
         )]
 
-    events.sort(key=lambda e: e.travel_details.get('travel_time', ''))
+    def _sort_key(e):
+        try:
+            return datetime.fromisoformat(e.travel_details.get('travel_time', '')).replace(tzinfo=None)
+        except (ValueError, TypeError):
+            return datetime.min
+
+    events.sort(key=_sort_key)
     return events

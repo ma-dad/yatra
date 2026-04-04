@@ -196,6 +196,8 @@ async def update_seek_request(
 
     if update_data.travel_details:
         seek_request.travel_details = update_data.travel_details.model_dump(mode="json")
+        if update_data.travel_details.travel_time is not None:
+            seek_request.expires_at = update_data.travel_details.travel_time + timedelta(hours=24)
     if update_data.assistance_needed:
         seek_request.assistance_needed = update_data.assistance_needed.model_dump(mode="json")
     if update_data.status:
@@ -366,6 +368,8 @@ async def update_volunteer_request(
 
     if update_data.travel_details:
         volunteer_request.travel_details = update_data.travel_details.model_dump(mode="json")
+        if update_data.travel_details.travel_time is not None:
+            volunteer_request.expires_at = update_data.travel_details.travel_time + timedelta(hours=24)
     if update_data.assistance_offered:
         volunteer_request.assistance_offered = update_data.assistance_offered.model_dump(mode="json")
     if update_data.availability:

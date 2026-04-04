@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Enum as SQLEnum, JSON, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, Enum as SQLEnum, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -28,7 +28,7 @@ class CalendarEvent(Base):
     travel_details = Column(JSON, nullable=False)
     
     # Event visibility and metadata
-    is_public = Column(String, default="true")  # For future privacy controls
+    is_public = Column(Boolean, default=True)  # For future privacy controls
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

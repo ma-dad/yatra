@@ -18,7 +18,7 @@ Phase 1 focuses on solving core problems with essential features, building a fou
 - Profile management with personal information
 - Emergency contact storage
 - JWT-based session management
-- Secure token refresh mechanism
+- Refresh token column stored on user (rotation/issuance endpoint not yet implemented)
 
 **User Types:**
 - **Seeker (Needer):** Users who need travel assistance
@@ -88,30 +88,18 @@ Phase 1 focuses on solving core problems with essential features, building a fou
 - ✅ **Layover Information** - Intermediate airports and duration
 
 **Matching Algorithm:**
-The algorithm calculates a compatibility score (0-100) based on:
+The matching service uses a boolean predicate (not a point-based score):
 
-1. **Route Match (40 points):**
-   - Exact match on source and destination airports
-   - Example: CDG → BOM matches CDG → BOM
+1. **Route Match (required):**
+   - Exact match on source AND destination airports
 
-2. **Flight Number Match (30 points):**
-   - Exact flight number match gets full points
-   - Different flights but within time window get time-based points
+2. **Flight Number OR Time Proximity (one required):**
+   - Exact flight number match, OR
+   - Departure times within `MATCH_TIME_BUFFER_HOURS` (default: 4 hours)
 
-3. **Time Proximity (30 points):**
-   - Within ±4 hours of travel time
-   - Closer times get higher scores
-   - Formula: 30 × (1 - time_diff/4)
+**Match score:** All matched pairs receive `match_score=1.0` as a constant match indicator.
 
-4. **Language Compatibility (10 points):**
-   - Based on user profiles
-   - Volunteer speaks seeker's preferred language
-
-5. **Category Match (10 points):**
-   - Assistance categories alignment
-   - e.g., "immigration_help", "navigation", "language_assistance"
-
-**Minimum Score:** 50/100 for a valid match
+**No minimum score threshold** is enforced; any pair satisfying the predicate is persisted.
 
 **API Endpoints:**
 - `GET /api/matches/discover` - Find compatible matches
@@ -187,7 +175,7 @@ The algorithm calculates a compatibility score (0-100) based on:
 
 **API Endpoints:**
 - `GET /api/calendar/` - Get user's calendar events
-- `GET /api/calendar/public` - Get public events for discovery
+- `GET /api/calendar/all` - Browse other authenticated users' events for discovery
 
 **Code Files:**
 - `src/app/models/calendar.py` - CalendarEvent model
@@ -331,7 +319,7 @@ The algorithm calculates a compatibility score (0-100) based on:
 As specified in the requirements:
 
 ✅ **Tests Core Concept:** The platform successfully connects seekers with volunteers
-✅ **Proves Matching Algorithm:** The scoring system effectively matches compatible travelers
+✅ **Proves Matching Algorithm:** The matching predicate effectively connects compatible travelers on the same route
 ✅ **Builds Initial Trust:** Privacy-first approach with explicit consent for contact sharing
 
 ## Project Quality
@@ -397,7 +385,7 @@ Phase 2 will focus on:
 
 ✅ All Phase 1 requirements implemented
 ✅ Fully functional API with 25+ endpoints
-✅ Smart matching algorithm with scoring
+✅ Smart matching algorithm (boolean route + time-window predicate)
 ✅ Calendar system with filtering
 ✅ Email notifications configured
 ✅ Interactive API documentation
