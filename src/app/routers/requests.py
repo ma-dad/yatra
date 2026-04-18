@@ -195,7 +195,17 @@ async def update_seek_request(
     previously_active = seek_request.status == RequestStatus.ACTIVE
 
     if update_data.travel_details:
-        seek_request.travel_details = update_data.travel_details.model_dump(mode="json")
+        new_travel = update_data.travel_details.model_dump(mode="json")
+        seek_request.travel_details = new_travel
+        if update_data.travel_details.travel_time is not None:
+            seek_request.expires_at = update_data.travel_details.travel_time + timedelta(hours=24)
+        # Keep the associated CalendarEvent in sync
+        cal_event = db.query(CalendarEvent).filter(
+            CalendarEvent.request_id == seek_request.id,
+            CalendarEvent.event_type == EventType.SEEK
+        ).first()
+        if cal_event:
+            cal_event.travel_details = new_travel
     if update_data.assistance_needed:
         seek_request.assistance_needed = update_data.assistance_needed.model_dump(mode="json")
     if update_data.status:
@@ -365,7 +375,17 @@ async def update_volunteer_request(
     previously_active = volunteer_request.status == RequestStatus.ACTIVE
 
     if update_data.travel_details:
-        volunteer_request.travel_details = update_data.travel_details.model_dump(mode="json")
+        new_travel = update_data.travel_details.model_dump(mode="json")
+        volunteer_request.travel_details = new_travel
+        if update_data.travel_details.travel_time is not None:
+            volunteer_request.expires_at = update_data.travel_details.travel_time + timedelta(hours=24)
+        # Keep the associated CalendarEvent in sync
+        cal_event = db.query(CalendarEvent).filter(
+            CalendarEvent.request_id == volunteer_request.id,
+            CalendarEvent.event_type == EventType.VOLUNTEER
+        ).first()
+        if cal_event:
+            cal_event.travel_details = new_travel
     if update_data.assistance_offered:
         volunteer_request.assistance_offered = update_data.assistance_offered.model_dump(mode="json")
     if update_data.availability:

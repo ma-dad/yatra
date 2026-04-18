@@ -37,6 +37,8 @@ def send_email(
         logger.warning("Email not configured, skipping notification")
         return False
 
+    smtp_port = settings.SMTP_PORT if settings.SMTP_PORT is not None else 587
+
     try:
         msg = MIMEMultipart('alternative')
         msg['From'] = settings.SMTP_USER
@@ -50,7 +52,7 @@ def send_email(
             html_part = MIMEText(html_body, 'html')
             msg.attach(html_part)
 
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+        with smtplib.SMTP(settings.SMTP_HOST, smtp_port) as server:
             server.starttls()
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(msg)

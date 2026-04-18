@@ -129,12 +129,23 @@ async def accept_match(
             detail="Match not found or you do not have a volunteer request linked to it"
         )
 
-    match = matching_service.accept_match(match_id, db)
-
     seek_request = db.query(SeekRequest).filter(
         SeekRequest.id == match.seek_request_id
     ).first()
+    if not seek_request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Seek request associated with this match not found"
+        )
+
     seeker = db.query(User).filter(User.id == seek_request.seeker_id).first()
+    if not seeker:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Seeker associated with this match not found"
+        )
+
+    match = matching_service.accept_match(match_id, db)
 
     send_contact_exchange_notification(
         to_email=seeker.email,

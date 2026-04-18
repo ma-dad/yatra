@@ -6,7 +6,7 @@ from app.utils.auth import verify_token
 from app.models.user import User, Seeker, Volunteer
 from app.schemas.auth import TokenData
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
@@ -20,6 +20,9 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    if credentials is None:
+        raise credentials_exception
 
     token = credentials.credentials
     payload = verify_token(token)

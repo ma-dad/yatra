@@ -24,7 +24,7 @@ class Match(Base):
     volunteer_request_id = Column(String, ForeignKey("volunteer_requests.id"), nullable=False)
     
     status = Column(SQLEnum(MatchStatus), default=MatchStatus.PENDING)
-    match_score = Column(Float, nullable=False)  # Compatibility score 0-100
+    match_score = Column(Float, nullable=False)  # Match indicator; currently stored as 1.0 for all matches
     
     # Communication details stored as JSON
     communication = Column(JSON, nullable=True)

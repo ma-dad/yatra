@@ -44,7 +44,7 @@ class Seeker(Base):
     seek_requests = relationship("SeekRequest", back_populates="seeker", cascade="all, delete-orphan")
     calendar_events = relationship("CalendarEvent", 
                                    foreign_keys="CalendarEvent.user_id",
-                                   primaryjoin="and_(Seeker.user_id==CalendarEvent.user_id, CalendarEvent.user_type=='seeker')",
+                                   primaryjoin="and_(Seeker.user_id==CalendarEvent.user_id, CalendarEvent.user_type=='seek')",
                                    back_populates="seeker")
 
 

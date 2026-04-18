@@ -169,7 +169,7 @@ yatra/
 
 ### Calendar
 - `GET /api/calendar/` - Get user calendar events
-- `GET /api/calendar/public` - Get public events
+- `GET /api/calendar/all` - Browse other authenticated users' calendar events (excluding the current user)
 
 ## Troubleshooting
 
