@@ -2,11 +2,14 @@
 
 Get the Yatra platform up and running in minutes!
 
-## Prerequisites
+## Related docs
 
-- Python 3.11 or higher
-- pip or pipenv
-- Git
+- [Project README](../README.md)
+- [System Design](design.md)
+- [Implementation Guide](implementation.md)
+- [Phase 1 Summary](PHASE1_SUMMARY.md)
+- [Upgrading](UPGRADING.md)
+- [Source Guide](../src/README.md)
 
 ## Installation Steps
 
@@ -43,6 +46,11 @@ Copy the example environment file and configure it:
 cp .env.example .env
 ```
 
+Default development behavior:
+
+- `ENABLE_GOOGLE_AUTH=false` → use `/api/auth/dev-login`
+- `EMAIL_LOG_ONLY=true` → emails are logged, not sent
+
 Edit `.env` with your configuration:
 ```env
 # Required for production
@@ -57,8 +65,6 @@ SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
 ```
 
-**Note:** For development/testing, the default SECRET_KEY will work, but Google OAuth credentials are needed for authentication.
-
 ### 4. Run the Application
 
 ```bash
@@ -67,6 +73,62 @@ uvicorn app.main:app --reload
 ```
 
 The application will start on `http://localhost:8000`
+
+
+### 5. Running using Docker (Optional)
+
+This project includes a `Dockerfile` at the repository root to build a container that runs the FastAPI app located in `src/`.
+
+Key points:
+- The container installs dependencies from the top-level `Pipfile` (if present) using `pipenv`.
+- The application code is placed at `/app/src` inside the container.
+- A Docker volume at `/data` is used to persist the SQLite database file (recommended).
+- Port `8000` is exposed by the container and the app runs with `uvicorn app.main:app` by default.
+
+Build the image (run from the repository root):
+
+```bash
+docker build -t yatra:latest .
+```
+
+Run the container while mounting credentials and persisting the database:
+
+# Example using an env file and mounting the Google client secret JSON
+```bash
+docker run --rm -p 8000:8000 \
+  -v yatra_data:/data \
+  --env-file ./path/to/.env \
+  -v ./client_secret_ID.apps.googleusercontent.com.json:/app/creds/client_secret.json:ro \
+  yatra:latest
+```
+
+Notes and tips:
+- The container sets `DATABASE_URL=sqlite:////data/yatra.db` by default. If you prefer a different path or a different DB, provide `DATABASE_URL` via `--env-file` or `-e`.
+- `--env-file` should contain values such as `SECRET_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (or other env vars your app expects). If your app expects a client secret JSON file, mount it into the container (example above mounts it to `/app/creds/client_secret.json`).
+- Persisted DB: the `yatra_data` named volume stores the SQLite DB at `/data/yatra.db`. Use a host bind mount instead if you prefer a local file path, e.g. `-v $(pwd)/data:/data`.
+- For local development you might want to add `--mount type=bind,source=$(pwd)/src,target=/app/src` to pick up local code changes; then run with `--entrypoint` or set `CMD` to include `--reload` for uvicorn.
+
+Example (host bind mount for DB and explicit env vars):
+
+```bash
+docker run --rm -p 8000:8000 \
+  -v $(pwd)/data:/data \
+  -v ./client_secret_ID.apps.googleusercontent.com.json:/app/creds/client_secret.json:ro \
+  -e DATABASE_URL="sqlite:////data/yatra.db" \
+  -e SECRET_KEY="your_jwt_secret" \
+  -e GOOGLE_CLIENT_ID="your_google_client_id" \
+  -e GOOGLE_CLIENT_SECRET="your_google_client_secret" \
+  yatra:latest
+```
+
+If you need to run migrations or custom startup commands, consider overriding the container's command, e.g.:
+
+```bash
+docker run --rm -it yatra:latest /bin/bash
+# then inside container run any setup steps
+```
+
+This should be enough to build and run the application in a containerized environment while keeping credentials outside the image and persisting the database.
 
 ### 5. Access the Application
 
@@ -97,6 +159,12 @@ Use the interactive Swagger UI at http://localhost:8000/api/docs to:
 ### Example API Request (using curl)
 
 ```bash
+
+# First auth call in development
+curl -X POST http://localhost:8000/api/auth/dev-login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"dev@example.com","user_type":"seeker"}'
+
 # Health check
 curl http://localhost:8000/health
 
@@ -133,11 +201,6 @@ yatra/
 
 ✅ **User Authentication:** Google OAuth with JWT tokens
 ✅ **Request Management:** Create/update/delete seek and volunteer requests
-✅ **Smart Matching:** Algorithm matches seekers with volunteers based on:
-   - Flight number (30 points)
-   - Route match (40 points)
-   - Time proximity (30 points)
-   - Language/categories (20 points)
 ✅ **Calendar System:** View and manage travel plans
 ✅ **Email Notifications:** Match alerts and contact exchange
 
