@@ -1,5 +1,14 @@
 # Upgrading Yatra
 
+## Related docs
+
+- [Project README](PROJECT.md)
+- [Quick Start](QUICKSTART.md)
+- [System Design](design.md)
+- [Implementation Guide](implementation.md)
+- [Phase 1 Summary](PHASE1_SUMMARY.md)
+- [Source Guide](../src/README.md)
+
 This file documents manual upgrade steps required when moving between versions.
 Run these steps **in order** against your existing database before restarting
 the application.

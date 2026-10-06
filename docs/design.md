@@ -3,6 +3,15 @@
 ## Overview
 This document defines the complete system design for the Yatra community travel assistance platform, including data structures, user operations, and API specifications for connecting travelers who need help with volunteers who can assist them.
 
+## Related docs
+
+- [Project README](PROJECT.md)
+- [Quick Start](QUICKSTART.md)
+- [Implementation Guide](implementation.md)
+- [Phase 1 Summary](PHASE1_SUMMARY.md)
+- [Upgrading](UPGRADING.md)
+- [Source Guide](../src/README.md)
+
 ---
 
 ## Data Models
@@ -501,106 +510,166 @@ Calendar View Relationship:
        │                        │                        │                        │
 ```
 
-### Seeker Request Flow
+### Seeker Request Flow (with Auto Matching)
 ```
-┌─────────────┐         ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
-│   SEEKER    │         │   REQUEST   │         │   MATCH     │         │  CALENDAR   │
-│             │         │   SERVICE   │         │   SERVICE   │         │   SERVICE   │
-└─────────────┘         └─────────────┘         └─────────────┘         └─────────────┘
+┌─────────────┐         ┌─────────────┐         ┌─────────────┐         ┌──────────────┐
+│   SEEKER    │         │   REQUEST   │         │   MATCH     │         │ EMAIL NOTIFY │
+│             │         │   SERVICE   │         │   SERVICE   │         │   SERVICE    │
+└─────────────┘         └─────────────┘         └─────────────┘         └──────────────┘
        │                        │                        │                        │
        │ 1. Create Seek Request │                        │                        │
        ├───────────────────────►│                        │                        │
        │                        │ 2. Save Request        │                        │
        │                        │ 3. Add to Calendar     │                        │
-       │                        ├────────────────────────┼───────────────────────►│
-       │                        │                        │                        │
-       │                        │ 4. Find Matches        │                        │
+       │                        │ 4. find_matches()      │                        │
        │                        ├───────────────────────►│                        │
-       │                        │                        │                        │
-       │                        │ 5. Notify Volunteers   │                        │
-       │                        │◄───────────────────────┤                        │
-       │                        │                        │                        │
-       │ 6. Request Created     │                        │                        │
-       │◄───────────────────────┤                        │                        │
-       │                        │                        │                        │
-       │ 7. View Matches        │                        │                        │
-       ├───────────────────────►│                        │                        │
-       │                        │ 8. Get Matches         │                        │
-       │                        ├───────────────────────►│                        │
-       │                        │                        │                        │
-       │ 9. Match List          │ 10. Match Data         │                        │
-       │◄───────────────────────┤◄───────────────────────┤                        │
-```
-
-### Volunteer Response Flow
-```
-┌─────────────┐         ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
-│ VOLUNTEER   │         │   MATCH     │         │NOTIFICATION │         │   SEEKER    │
-│             │         │   SERVICE   │         │   SERVICE   │         │             │
-└─────────────┘         └─────────────┘         └─────────────┘         └─────────────┘
-       │                        │                        │                        │
-       │ 1. View Available      │                        │                        │
-       │    Seek Requests       │                        │                        │
-       ├───────────────────────►│                        │                        │
-       │                        │                        │                        │
-       │ 2. Available Matches   │                        │                        │
-       │◄───────────────────────┤                        │                        │
-       │                        │                        │                        │
-       │ 3. Accept Match        │                        │                        │
-       ├───────────────────────►│                        │                        │
-       │                        │ 4. Update Status       │                        │
-       │                        │ 5. Exchange Contacts   │                        │
-       │                        │                        │                        │
-       │                        │ 6. Notify Seeker       │                        │
-       │                        ├───────────────────────►│                        │
-       │                        │                        │ 7. Send Notification   │
+       │                        │                        │ 5. Notify Volunteers  │
        │                        │                        ├───────────────────────►│
        │                        │                        │                        │
-       │ 8. Contact Details     │                        │                        │
+       │                        │                        │ 6. Create Match       │
+       │                        │◄───────────────────────┤    Records & Log      │
+       │                        │                        │                        │
+       │ 7. Response: Seek      │                        │                        │
+       │    Request Created     │                        │                        │
+       │    (no matches in body)│                        │                        │
        │◄───────────────────────┤                        │                        │
        │                        │                        │                        │
 ```
 
-### Complete Matching Process
+### Volunteer Request Flow (with Auto Matching)
 ```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   SEEKER    │    │ VOLUNTEER   │    │   SYSTEM    │    │   MATCH     │
-│             │    │             │    │  ALGORITHM  │    │   CREATED   │
-└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
-       │                   │                   │                   │
-       │ 1. Create         │                   │                   │
-       │ Seek Request      │                   │                   │
-       ├──────────────────►│                   │                   │
-       │                   │                   │                   │
-       │                   │ 2. Create         │                   │
-       │                   │ Volunteer Request │                   │
-       │                   ├──────────────────►│                   │
-       │                   │                   │                   │
-       │                   │                   │ 3. Match          │
-       │                   │                   │ Algorithm         │
-       │                   │                   │ (Airport, Time,   │
-       │                   │                   │ Language, etc.)   │
-       │                   │                   ├──────────────────►│
-       │                   │                   │                   │
-       │                   │ 4. Notify Match   │                   │
-       │                   │◄─────────────────────────────────────┤
-       │                   │                   │                   │
-       │                   │ 5. Accept/Reject  │                   │
-       │                   ├─────────────────────────────────────►│
-       │                   │                   │                   │
-       │ 6. Contact        │                   │                   │
-       │ Exchange          │                   │                   │
-       │◄─────────────────►│                   │                   │
-       │                   │                   │                   │
-       │ 7. Travel         │                   │                   │
-       │ Assistance        │                   │                   │
-       │◄─────────────────►│                   │                   │
-       │                   │                   │                   │
-       │ 8. Mark Complete  │                   │                   │
-       ├─────────────────────────────────────────────────────────►│
-       │                   │                   │                   │
-       │                   │ 9. Mark Complete  │                   │
-       │                   ├─────────────────────────────────────►│
+┌─────────────┐         ┌─────────────┐         ┌─────────────┐         ┌──────────────┐
+│ VOLUNTEER   │         │   REQUEST   │         │   MATCH     │         │ EMAIL NOTIFY │
+│             │         │   SERVICE   │         │   SERVICE   │         │   SERVICE    │
+└─────────────┘         └─────────────┘         └─────────────┘         └──────────────┘
+       │                        │                        │                        │
+       │ 1. Create Volunteer    │                        │                        │
+       │    Request             │                        │                        │
+       ├───────────────────────►│                        │                        │
+       │                        │ 2. Save Request        │                        │
+       │                        │ 3. Add to Calendar     │                        │
+       │                        │ 4. find_matches_for_   │                        │
+       │                        │    volunteer()         │                        │
+       │                        ├───────────────────────►│                        │
+       │                        │                        │ 5. Notify Seekers     │
+       │                        │                        ├───────────────────────►│
+       │                        │                        │                        │
+       │                        │                        │ 6. Create Match       │
+       │                        │◄───────────────────────┤    Records & Log      │
+       │                        │                        │                        │
+       │ 7. Response: Volunteer │                        │                        │
+       │    Request Created     │                        │                        │
+       │    (no matches in body)│                        │                        │
+       │◄───────────────────────┤                        │                        │
+       │                        │                        │                        │
+```
+
+### Match Discovery & Acceptance Flow
+```
+┌─────────────┐         ┌─────────────┐         ┌─────────────┐         ┌──────────────┐
+│ VOLUNTEER   │         │   MATCH     │         │NOTIFICATION │         │   SEEKER     │
+│    or       │         │   SERVICE   │         │   SERVICE   │         │              │
+│   SEEKER    │         │             │         │             │         │              │
+└─────────────┘         └─────────────┘         └─────────────┘         └──────────────┘
+       │                        │                        │                        │
+       │ 1. GET /discover       │                        │                        │
+       │    View Matches        │                        │                        │
+       │    (pre-notified)      │                        │                        │
+       ├───────────────────────►│                        │                        │
+       │                        │ 2. Query Matches       │                        │
+       │                        │ 3. Get Details         │                        │
+       │                        │ 4. Return Ranked List  │                        │
+       │                        │                        │                        │
+       │ 5. Available Matches   │                        │                        │
+       │    List                │                        │                        │
+       │◄───────────────────────┤                        │                        │
+       │                        │                        │                        │
+       │ 6. Accept/Reject Match │                        │                        │
+       ├───────────────────────►│                        │                        │
+       │                        │ 7. Update Status       │                        │
+       │                        │    ACCEPTED            │                        │
+       │                        │ 8. Exchange Contacts   │                        │
+       │                        ├───────────────────────►│                        │
+       │                        │                        │ 9. Send Contact Info  │
+       │                        │                        ├───────────────────────►│
+       │                        │                        │                        │
+       │ 10. Contact Details    │                        │ 11. Contact Details   │
+       │     Received           │                        │     Received           │
+       │◄───────────────────────┤                        │◄───────────────────────│
+       │                        │                        │                        │
+```
+
+### Complete Matching Process (Bi-directional)
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌──────────────┐    ┌─────────────┐
+│   SEEKER    │    │ VOLUNTEER   │    │   SYSTEM    │    │ EMAIL NOTIFY │    │   MATCH     │
+│             │    │             │    │  ALGORITHM  │    │   SERVICE    │    │   CREATED   │
+└─────────────┘    └─────────────┘    └─────────────┘    └──────────────┘    └─────────────┘
+       │                   │                   │                   │                   │
+       │ 1. Create         │                   │                   │                   │
+       │ Seek Request      │                   │                   │                   │
+       ├──────────────────►│                   │                   │                   │
+       │                   │                   │                   │                   │
+       │                   │                   │ 2A. find_matches()│                   │
+       │                   │                   │ (for Seeker)      │                   │
+       │                   │                   │ Find matching     │                   │
+       │                   │                   │ volunteers        │                   │
+       │                   │                   ├──────────────────►│                   │
+       │                   │                   │                   │ 3A. Send          │
+       │                   │                   │                   │ notifications to  │
+       │                   │                   │                   │ volunteer emails  │
+       │                   │                   │                   ├──────────────────►│
+       │                   │                   │◄──────────────────┤                   │
+       │                   │                   │                   │ 4A. Create Match  │
+       │                   │                   │                   │ records           │
+       │ Response:         │                   │                   │◄──────────────────┤
+       │ SeekRequest       │                   │                   │                   │
+       │ (no matches)      │                   │                   │                   │
+       │◄──────────────────┤                   │                   │                   │
+       │                   │                   │                   │                   │
+       │                   │ 5. Create         │                   │                   │
+       │                   │ Volunteer Request │                   │                   │
+       │                   ├──────────────────►│                   │                   │
+       │                   │                   │                   │                   │
+       │                   │                   │ 2B. find_matches_ │                   │
+       │                   │                   │ for_volunteer()   │                   │
+       │                   │                   │ (for Volunteer)   │                   │
+       │                   │                   │ Find matching     │                   │
+       │                   │                   │ seekers           │                   │
+       │                   │                   ├──────────────────►│                   │
+       │                   │                   │                   │ 3B. Send          │
+       │                   │                   │                   │ notifications to  │
+       │                   │                   │                   │ seeker emails     │
+       │                   │                   │                   ├──────────────────►│
+       │                   │                   │◄──────────────────┤                   │
+       │                   │                   │                   │ 4B. Create Match  │
+       │                   │                   │                   │ records           │
+       │ Response:         │                   │                   │◄──────────────────┤
+       │ VolunteerRequest  │                   │                   │                   │
+       │ (no matches)      │                   │                   │                   │
+       │                   │◄──────────────────┤                   │                   │
+       │                   │                   │                   │                   │
+       │ 6. Both check     │                   │                   │                   │
+       │ /discover to see  │                   │                   │                   │
+       │ matches           │                   │                   │                   │
+       ├──────────────────────────────────────►│                   │                   │
+       │                   ├──────────────────────────────────────►│                   │
+       │                   │                   │                   │                   │
+       │ 7. Accept/Reject  │                   │                   │                   │
+       │ Match             │                   │                   │                   │
+       ├─────────────────────────────────────────────────────────►│                   │
+       │                   │                   │                   │                   │
+       │ 8. Contact        │                   │ 5. Exchange       │                   │
+       │ Exchange          │                   │ Contacts via      │                   │
+       │ (via email)       │                   │ Email             │                   │
+       │◄─────────────────────────────────────►│◄──────────────────┤                   │
+       │                   │                   │                   │                   │
+       │ 9. Travel         │                   │                   │                   │
+       │ Assistance        │                   │                   │                   │
+       │◄─────────────────►│                   │                   │                   │
+       │                   │                   │                   │                   │
+       │ 10. Mark Complete │                   │                   │                   │
+       ├──────────────────►│                   │                   │                   │
 ```
 
 ## User Operations & API Specifications
@@ -1103,7 +1172,7 @@ All API endpoints follow a consistent error response format:
 
 ## Data Flow Examples
 
-### 1. Complete Seek Request Flow
+### 1. Complete Seek Request Flow (Bi-directional Matching)
 
 **Step-by-Step Process:**
 ```
@@ -1112,49 +1181,159 @@ All API endpoints follow a consistent error response format:
                      ┌─────────────────────▼─────────────────────┐
                      │          REQUEST SERVICE                  │
                      │                                           │
-                     │ 2. Validate & Save Request                │
+                     │ 2. Validate & Save Seek Request           │
                      │ 3. Create Calendar Event                  │
-                     │ 4. Run Matching Algorithm                 │
-                     │ 5. Notify Potential Volunteers            │
+                     │ 4. Call find_matches() Algorithm          │
+                     │ 5. Notify Matching Volunteers via Email   │
+                     │ 6. Create Match Records in Database       │
                      └─────────────────────┬─────────────────────┘
                                            │
-[SEEKER] ◄──6. Request Created Response───┘
+[SEEKER] ◄──7. SeekRequest Created────────┘
+            (no matches in response)
 
-[VOLUNTEER] ──7. GET /api/matches/discover──► [API]
+[VOLUNTEER] ──8. Creates volunteer request──────► [API]
+                                                   │
+                         ┌─────────────────────────▼─────────────────────┐
+                         │          REQUEST SERVICE                      │
+                         │                                               │
+                         │ 9. Validate & Save Volunteer Request         │
+                         │ 10. Create Calendar Event                    │
+                         │ 11. Call find_matches_for_volunteer()        │
+                         │ 12. Notify Matching Seekers via Email        │
+                         │ 13. Create Match Records in Database         │
+                         └─────────────────────┬─────────────────────────┘
                                                │
-                         ┌─────────────────────▼─────────────────────┐
-                         │          MATCH SERVICE                    │
-                         │                                           │
-                         │ 8. Find Compatible Requests              │
-                         │ 9. Calculate Match Scores                │
-                         │ 10. Return Ranked Matches                │
-                         └─────────────────────┬─────────────────────┘
-                                               │
-[VOLUNTEER] ◄──11. Available Matches List─────┘
+[VOLUNTEER] ◄──14. VolunteerRequest Created───┘
+              (no matches in response)
 
-[VOLUNTEER] ──12. POST /api/matches/{id}/accept──► [API]
-                                                     │
-                            ┌────────────────────────▼────────────────────────┐
-                            │             MATCH SERVICE                       │
-                            │                                                 │
-                            │ 13. Update Match Status                        │
-                            │ 14. Exchange Contact Information               │
-                            │ 15. Notify Seeker                             │
-                            │ 16. Update Calendar Events                     │
-                            └────────────────────────┬────────────────────────┘
-                                                     │
-[VOLUNTEER] ◄──17. Contact Exchange Successful──────┘
+[SEEKER] ──15. GET /api/matches/discover──► [API]
+                                             │
+                 ┌───────────────────────────▼───────────────────────────┐
+                 │          MATCH SERVICE                                │
+                 │                                                       │
+                 │ 16. Query Matches for Seeker's Requests             │
+                 │ 17. Get Volunteer Details (Email Notified)          │
+                 │ 18. Calculate Match Scores (Sorted)                 │
+                 │ 19. Return Ranked Matches                           │
+                 └───────────────────────────┬───────────────────────────┘
+                                             │
+[SEEKER] ◄──20. Available Matches List───────┘
+
+[VOLUNTEER] ──21. GET /api/matches/discover──► [API]
+                                                │
+                   ┌─────────────────────────────▼─────────────────────────┐
+                   │          MATCH SERVICE                                │
+                   │                                                       │
+                   │ 22. Query Matches for Volunteer's Requests          │
+                   │ 23. Get Seeker Details (Email Notified)             │
+                   │ 24. Calculate Match Scores (Sorted)                 │
+                   │ 25. Return Ranked Matches                           │
+                   └─────────────────────────────┬─────────────────────────┘
+                                                │
+[VOLUNTEER] ◄──26. Available Matches List───────┘
+
+[VOLUNTEER/SEEKER] ──27. POST /api/matches/{id}/accept──► [API]
+                                                          │
+                              ┌──────────────────────────▼──────────────────────────┐
+                              │             MATCH SERVICE                           │
+                              │                                                     │
+                              │ 28. Update Match Status to ACCEPTED                │
+                              │ 29. Exchange Contact Information                    │
+                              │ 30. Send Contact Exchange Emails to Both Parties    │
+                              │ 31. Update Calendar Events                         │
+                              └──────────────────────────┬──────────────────────────┘
+                                                        │
+[VOLUNTEER/SEEKER] ◄──32. Contact Exchange Successful──┘
 ```
 
-**1. Seeker creates request** → `POST /api/requests/seek`
-**2. System finds potential matches** → Background matching algorithm
-**3. Volunteer sees match** → `GET /api/matches/discover`
-**4. Volunteer accepts match** → `POST /api/matches/{match_id}/accept`
-**5. Contact details exchanged** → Both parties get contact info
-**6. Travel assistance completed** → Users can mark assistance as complete
-**7. Request marked complete** → `POST /api/matches/{match_id}/complete`
+**Key Flow Steps:**
 
-### 2. Calendar Integration Flow
+**Phase 1: Seeker Creates Request**
+- `POST /api/requests/seek` → Seeker submits request
+- `find_matches()` runs automatically
+- Matching volunteers notified via email
+- Match records created in database
+- Response: `SeekRequest` (matches not included)
+
+**Phase 2: Volunteer Creates Request**
+- `POST /api/requests/volunteer` → Volunteer submits request
+- `find_matches_for_volunteer()` runs automatically
+- Matching seekers notified via email
+- Match records created in database
+- Response: `VolunteerRequest` (matches not included)
+
+**Phase 3: Discovery**
+- `GET /api/matches/discover` → Both parties view matches
+- Seeker sees volunteers who can help (notified by email)
+- Volunteer sees seekers who need help (notified by email)
+
+**Phase 4: Match Acceptance**
+- `POST /api/matches/{id}/accept` → Either party accepts
+- Contact details exchanged via email
+- Match status changes to `ACCEPTED`
+
+### 2. Matching Algorithm Flow (Bi-directional)
+
+**Smart Matching Process:**
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      MATCHING ALGORITHM (Bi-directional)               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│ ◄─── SCENARIO A: Seeker Creates Request ───►                          │
+│                                                                         │
+│ Input: New Seek Request                                                 │
+│   ├─ Travel Details (Airport, Time, Flight)                            │
+│   ├─ Assistance Needed (Categories, Requirements)                       │
+│   └─ User Profile (Language, Preferences)                              │
+│                                                                         │
+│ Step 1A: find_matches() - Find Volunteer Matches                       │
+│   ├─ Query all ACTIVE volunteer requests                               │
+│   ├─ For each volunteer request:                                       │
+│   │  ├─ Calculate Compatibility Score (0-100)                          │
+│   │  │  ├─ Route Match: 40 points (same src/dest)                      │
+│   │  │  ├─ Flight Match: 30 points (same flight)                       │
+│   │  │  ├─ Time Proximity: 30 points (±4 hours)                        │
+│   │  │  ├─ Language Match: 10 points                                   │
+│   │  │  └─ Category Match: 10 points (assistance overlap)              │
+│   │  │                                                                  │
+│   │  ├─ If score ≥ 50 (min_score):                                     │
+│   │  │  ├─ Create Match record (status: PENDING)                       │
+│   │  │  ├─ Send Email to Volunteer                                     │
+│   │  │  │  ├─ Subject: "New Travel Assistance Match Found - Yatra"    │
+│   │  │  │  ├─ Body: Match details, volunteer's assistance info        │
+│   │  │  │  └─ Call to action: Log in to discover matches              │
+│   │  │  ├─ Log: "Match notification sent - Match ID: ..., Score: ..." │
+│   │  │  └─ Store in Database                                          │
+│   │                                                                     │
+│ ◄─── SCENARIO B: Volunteer Creates Request ───►                       │
+│                                                                         │
+│ Input: New Volunteer Request                                            │
+│   ├─ Travel Details (Airport, Time, Flight)                            │
+│   ├─ Assistance Offered (Categories, Skills)                           │
+│   └─ User Profile (Languages Spoken, Experience)                       │
+│                                                                         │
+│ Step 1B: find_matches_for_volunteer() - Find Seeker Matches            │
+│   ├─ Query all ACTIVE seek requests                                    │
+│   ├─ For each seek request:                                            │
+│   │  ├─ Calculate Compatibility Score (0-100) [SAME ALGORITHM]         │
+│   │  │                                                                  │
+│   │  ├─ If score ≥ 50 (min_score):                                     │
+│   │  │  ├─ Create Match record (status: PENDING)                       │
+│   │  │  ├─ Send Email to Seeker                                        │
+│   │  │  │  ├─ Subject: "New Travel Assistance Match Found - Yatra"    │
+│   │  │  │  ├─ Body: Match details, volunteer's assistance info        │
+│   │  │  │  └─ Call to action: Log in to discover matches              │
+│   │  │  ├─ Log: "Match notification sent - Match ID: ..., Score: ..." │
+│   │  │  └─ Store in Database                                          │
+│                                                                         │
+│ OUTPUT: Multiple Match Records                                          │
+│   └─ Ready for Discovery & Review by Both Parties                       │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3. Calendar Integration Flow
 
 **Calendar View Process:**
 ```

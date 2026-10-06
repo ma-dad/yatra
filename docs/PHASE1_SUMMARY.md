@@ -1,12 +1,45 @@
 # Phase 1 Implementation Summary
 
+## Related docs
+
+- [PROJECT README](docs/PROJECT.md)
+- [Quick Start](QUICKSTART.md)
+- [System Design](design.md)
+- [Implementation Guide](implementation.md)
+- [Upgrading](UPGRADING.md)
+- [Source Guide](../src/README.md)
+
 ## Overview
 
-This document summarizes the complete implementation of Phase 1 (Building the Foundation) of the Yatra platform, as specified in the README.md requirements.
+This document summarizes the complete implementation of Phase 1 (Building the Foundation) of the Yatra platform, as specified in the PROJECT.md requirements.
 
 ## Implementation Scope
 
 Phase 1 focuses on solving core problems with essential features, building a foundation for the community travel assistance platform.
+
+## Implemented
+
+- FastAPI API with grouped routers (`auth`, `requests`, `matches`, `calendar`)
+- JWT authentication and role-aware dependencies
+- Dev login endpoint (`/api/auth/dev-login`) for local/testing mode
+- Seek/volunteer request CRUD with soft-cancel semantics
+- Auto-expiration of stale active requests
+- Matching service using route + (flight OR time-window) predicate
+- Match discovery endpoint returning details for both seeker and volunteer perspectives
+- Volunteer accept/reject actions
+- Calendar event creation from requests and browse APIs
+- Email notification helpers with log-only mode by default
+
+## Not implemented in current code
+
+- Refresh token issuance/rotation endpoint
+- Point-based weighted matching score (stored score is `1.0` for matches)
+- Public unauthenticated calendar browsing
+- Full migration framework (manual scripts are used when needed)
+
+## Test status
+
+Current test suite (`src/tests`) passes with `pytest`.
 
 ## What Was Built
 

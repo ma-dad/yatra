@@ -1,5 +1,14 @@
 # Yatra Platform - Implementation Guide
 
+## Related docs
+
+- [Project README](PROJECT.md)
+- [Quick Start](QUICKSTART.md)
+- [System Design](design.md)
+- [Phase 1 Summary](PHASE1_SUMMARY.md)
+- [Upgrading](UPGRADING.md)
+- [Source Guide](../src/README.md)
+
 ## Overview
 This document provides comprehensive implementation guidelines for the Yatra platform backend, including datastore recommendations, Python framework selection, development setup, testing strategies, and deployment considerations.
 
@@ -680,3 +689,8 @@ uvicorn app.main:app --reload
 - **Security**: Validate all inputs, use HTTPS in production
 
 This implementation guide provides a practical foundation for building the Yatra platform with FastAPI, starting simple with SQLite and static frontend, then scaling up as needed.
+
+## Migration note
+
+Because `create_all()` does not alter existing columns, schema-type changes require manual migration scripts.
+See [UPGRADING.md](UPGRADING.md).
