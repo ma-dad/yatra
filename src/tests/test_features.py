@@ -248,6 +248,138 @@ class TestMatchingLogic:
         matches = client.get("/api/matches/discover", headers=auth_headers(seeker_token)).json()
         assert len(matches) == 0
 
+    def test_updating_request_discovers_persisted_match(self, client):
+        seeker_token = dev_login(client, "seeker_update_match@example.com", "seeker")
+        volunteer_token = dev_login(client, "vol_update_match@example.com", "volunteer")
+        seek = client.post(
+            "/api/requests/seek",
+            json=seek_payload("UP1", dst="LHR"),
+            headers=auth_headers(seeker_token)
+        )
+        client.post(
+            "/api/requests/volunteer",
+            json=volunteer_payload("UP2", dst="CDG"),
+            headers=auth_headers(volunteer_token)
+        )
+
+        assert client.get(
+            "/api/matches/discover", headers=auth_headers(seeker_token)
+        ).json() == []
+
+        updated = client.put(
+            f"/api/requests/seek/{seek.json()['id']}",
+            json={"travel_details": {
+                "travel_time": FUTURE_TIME,
+                "source_airport": "JFK",
+                "destination_airport": "CDG",
+                "flight_number": "UP2",
+                "number_of_people": 1,
+            }},
+            headers=auth_headers(seeker_token)
+        )
+        assert updated.status_code == 200
+        matches = client.get(
+            "/api/matches/discover", headers=auth_headers(seeker_token)
+        ).json()
+        assert len(matches) == 1
+
+
+class TestMatchWorkflow:
+    def test_match_found_notifies_both_parties(self, client, caplog):
+        import logging
+
+        seeker_token = dev_login(client, "match_notice_seeker@example.com", "seeker")
+        volunteer_token = dev_login(client, "match_notice_volunteer@example.com", "volunteer")
+        client.post("/api/requests/seek", json=seek_payload("MN1"),
+                    headers=auth_headers(seeker_token))
+
+        with caplog.at_level(logging.INFO, logger="app.utils.email"):
+            client.post("/api/requests/volunteer", json=volunteer_payload("MN1"),
+                        headers=auth_headers(volunteer_token))
+
+        notification_logs = [
+            record.message for record in caplog.records
+            if "[EMAIL LOG-ONLY]" in record.message
+        ]
+        assert len(notification_logs) == 2
+        assert any("match_notice_seeker@example.com" in message for message in notification_logs)
+        assert any("match_notice_volunteer@example.com" in message for message in notification_logs)
+
+    def test_contact_exchange_requires_seeker_confirmation(self, client, caplog):
+        import logging
+
+        seeker_token = dev_login(client, "confirm_seeker@example.com", "seeker")
+        volunteer_token = dev_login(client, "confirm_volunteer@example.com", "volunteer")
+        client.post("/api/requests/seek", json=seek_payload("CF1"),
+                    headers=auth_headers(seeker_token))
+        client.post("/api/requests/volunteer", json=volunteer_payload("CF1"),
+                    headers=auth_headers(volunteer_token))
+        match = client.get("/api/matches/discover",
+                           headers=auth_headers(seeker_token)).json()[0]
+        match_id = match["match_id"]
+
+        premature_confirmation = client.post(
+            f"/api/matches/{match_id}/confirm",
+            headers=auth_headers(seeker_token)
+        )
+        assert premature_confirmation.status_code == 409
+
+        volunteer_acceptance = client.post(
+            f"/api/matches/{match_id}/accept",
+            headers=auth_headers(volunteer_token)
+        )
+        assert volunteer_acceptance.status_code == 200
+        assert volunteer_acceptance.json()["communication"] is None
+
+        with caplog.at_level(logging.INFO, logger="app.utils.email"):
+            seeker_confirmation = client.post(
+                f"/api/matches/{match_id}/confirm",
+                headers=auth_headers(seeker_token)
+            )
+
+        assert seeker_confirmation.status_code == 200
+        assert seeker_confirmation.json()["communication"]["contact_exchanged"] is True
+        contact_logs = [
+            record.message for record in caplog.records
+            if "Contact Information Shared" in record.message
+        ]
+        assert len(contact_logs) == 2
+
+        duplicate_confirmation = client.post(
+            f"/api/matches/{match_id}/confirm",
+            headers=auth_headers(seeker_token)
+        )
+        assert duplicate_confirmation.status_code == 409
+        rejection_after_confirmation = client.post(
+            f"/api/matches/{match_id}/reject",
+            headers=auth_headers(seeker_token)
+        )
+        assert rejection_after_confirmation.status_code == 409
+
+    def test_seeker_can_deny_after_volunteer_accepts(self, client):
+        seeker_token = dev_login(client, "deny_seeker@example.com", "seeker")
+        volunteer_token = dev_login(client, "deny_volunteer@example.com", "volunteer")
+        client.post("/api/requests/seek", json=seek_payload("DN1"),
+                    headers=auth_headers(seeker_token))
+        client.post("/api/requests/volunteer", json=volunteer_payload("DN1"),
+                    headers=auth_headers(volunteer_token))
+        match = client.get("/api/matches/discover",
+                           headers=auth_headers(seeker_token)).json()[0]
+        match_id = match["match_id"]
+
+        accepted = client.post(
+            f"/api/matches/{match_id}/accept",
+            headers=auth_headers(volunteer_token)
+        )
+        assert accepted.status_code == 200
+
+        denied = client.post(
+            f"/api/matches/{match_id}/reject",
+            headers=auth_headers(seeker_token)
+        )
+        assert denied.status_code == 200
+        assert denied.json()["status"] == "rejected"
+
 
 # ---------------------------------------------------------------------------
 # Request limit tests

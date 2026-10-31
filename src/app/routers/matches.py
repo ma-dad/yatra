@@ -114,7 +114,7 @@ async def accept_match(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Accept a match (user must have a volunteer request linked to this match)."""
+    """Record the volunteer's acceptance of a match."""
 
     match = db.query(Match).join(
         VolunteerRequest, Match.volunteer_request_id == VolunteerRequest.id
@@ -129,39 +129,79 @@ async def accept_match(
             detail="Match not found or you do not have a volunteer request linked to it"
         )
 
-    seek_request = db.query(SeekRequest).filter(
-        SeekRequest.id == match.seek_request_id
-    ).first()
-    if not seek_request:
+    if match.status != MatchStatus.PENDING:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Seek request associated with this match not found"
-        )
-
-    seeker = db.query(User).filter(User.id == seek_request.seeker_id).first()
-    if not seeker:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Seeker associated with this match not found"
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only pending matches can be accepted by a volunteer"
         )
 
     match = matching_service.accept_match(match_id, db)
 
+    logger.info(f"Match {match_id} accepted by volunteer {current_user.id}")
+    return match
+
+
+@router.post("/{match_id}/confirm", response_model=MatchResponse)
+async def confirm_match(
+    match_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Confirm a volunteer-accepted match as the seeker and exchange contacts."""
+    match = db.query(Match).join(
+        SeekRequest, Match.seek_request_id == SeekRequest.id
+    ).filter(
+        Match.id == match_id,
+        SeekRequest.seeker_id == current_user.id
+    ).first()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found or you do not have a seek request linked to it"
+        )
+
+    if match.status != MatchStatus.ACCEPTED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only matches accepted by the volunteer can be confirmed"
+        )
+
+    if match.communication and match.communication.get("contact_exchanged"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Contact details have already been exchanged"
+        )
+
+    volunteer_request = db.query(VolunteerRequest).filter(
+        VolunteerRequest.id == match.volunteer_request_id
+    ).first()
+    volunteer = db.query(User).filter(
+        User.id == volunteer_request.volunteer_id
+    ).first() if volunteer_request else None
+    if not volunteer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Volunteer associated with this match not found"
+        )
+
+    match = matching_service.confirm_match(match_id, db)
+
     send_contact_exchange_notification(
-        to_email=seeker.email,
+        to_email=current_user.email,
+        contact_name=volunteer.profile.get("name"),
+        contact_email=volunteer.email,
+        contact_phone=volunteer.profile.get("phone")
+    )
+
+    send_contact_exchange_notification(
+        to_email=volunteer.email,
         contact_name=current_user.profile.get("name"),
         contact_email=current_user.email,
         contact_phone=current_user.profile.get("phone")
     )
 
-    send_contact_exchange_notification(
-        to_email=current_user.email,
-        contact_name=seeker.profile.get("name"),
-        contact_email=seeker.email,
-        contact_phone=seeker.profile.get("phone")
-    )
-
-    logger.info(f"Match {match_id} accepted by volunteer {current_user.id}")
+    logger.info(f"Match {match_id} confirmed by seeker {current_user.id}")
     return match
 
 
@@ -171,23 +211,45 @@ async def reject_match(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Reject a match (user must have a volunteer request linked to this match)."""
+    """Reject a pending match as the volunteer or deny an accepted match as the seeker."""
 
-    match = db.query(Match).join(
-        VolunteerRequest, Match.volunteer_request_id == VolunteerRequest.id
-    ).filter(
-        Match.id == match_id,
-        VolunteerRequest.volunteer_id == current_user.id
-    ).first()
+    match = db.query(Match).filter(Match.id == match_id).first()
 
     if not match:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Match not found or you do not have a volunteer request linked to it"
+            detail="Match not found"
+        )
+
+    volunteer_request = db.query(VolunteerRequest).filter(
+        VolunteerRequest.id == match.volunteer_request_id,
+        VolunteerRequest.volunteer_id == current_user.id
+    ).first()
+    seek_request = db.query(SeekRequest).filter(
+        SeekRequest.id == match.seek_request_id,
+        SeekRequest.seeker_id == current_user.id
+    ).first()
+    may_reject_as_volunteer = (
+        volunteer_request is not None and match.status == MatchStatus.PENDING
+    )
+    may_deny_as_seeker = (
+        seek_request is not None
+        and match.status == MatchStatus.ACCEPTED
+        and not (match.communication and match.communication.get("contact_exchanged"))
+    )
+    if not may_reject_as_volunteer and not may_deny_as_seeker:
+        if not volunteer_request and not seek_request:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Match not found or you are not a participant"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Match cannot be rejected in its current state"
         )
 
     match = matching_service.reject_match(match_id, db)
-    logger.info(f"Match {match_id} rejected by volunteer {current_user.id}")
+    logger.info(f"Match {match_id} rejected by user {current_user.id}")
     return match
 
 
