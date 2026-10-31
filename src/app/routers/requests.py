@@ -218,7 +218,7 @@ async def update_seek_request(
     db.refresh(seek_request)
 
     # Re-trigger matching when travel details change and request is still active
-    if previously_active and seek_request.status == RequestStatus.ACTIVE:
+    if seek_request.status == RequestStatus.ACTIVE:
         matching_service.find_matches(seek_request.id, db)
 
     return seek_request
@@ -372,8 +372,6 @@ async def update_volunteer_request(
             detail="Volunteer request not found"
         )
 
-    previously_active = volunteer_request.status == RequestStatus.ACTIVE
-
     if update_data.travel_details:
         new_travel = update_data.travel_details.model_dump(mode="json")
         volunteer_request.travel_details = new_travel
@@ -397,7 +395,7 @@ async def update_volunteer_request(
     db.refresh(volunteer_request)
 
     # Re-trigger matching when request is still active
-    if previously_active and volunteer_request.status == RequestStatus.ACTIVE:
+    if volunteer_request.status == RequestStatus.ACTIVE:
         matching_service.find_matches_for_volunteer(volunteer_request.id, db)
 
     return volunteer_request

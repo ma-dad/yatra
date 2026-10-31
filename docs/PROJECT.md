@@ -64,16 +64,14 @@ Our platform creates a simple but powerful solution: connecting people who need 
    - The system matches them with people who need assistance on the same route
 
 2. **Smart Matching Process**:
-   - The platform looks at departure/arrival airports
-   - It considers travel dates and times
-   - It matches based on language preferences
-   - It considers special needs (wheelchair assistance, immigration help)
-   - It accounts for layovers and connection airports
+   - The platform requires the same source and destination airports
+   - It also requires either the same non-empty flight number or departure
+     times within the configured matching buffer
 
 3. **Making the Connection**:
    - When a match is found, both parties receive notification
-   - The helper decides if they can assist
-   - If yes, contact details are securely exchanged
+   - The helper accepts first; the seeker then confirms or denies the match
+   - Contact details are securely exchanged only after both parties accept
    - They can coordinate meeting points and assistance needed
 
 4. **Ensuring Safety and Privacy**:

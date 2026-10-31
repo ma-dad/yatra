@@ -3,7 +3,9 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.models.request import SeekRequest, VolunteerRequest, RequestStatus
 from app.models.match import Match, MatchStatus
+from app.models.user import User
 from app.config import settings
+from app.utils.email import send_match_notification
 import logging
 
 logger = logging.getLogger(__name__)
@@ -113,6 +115,7 @@ class MatchingService:
             len(new_matches),
             seek_request_id,
         )
+        self._notify_match_parties(new_matches, db)
         return new_matches
 
     def find_matches_for_volunteer(
@@ -162,26 +165,69 @@ class MatchingService:
             len(new_matches),
             volunteer_request_id,
         )
+        self._notify_match_parties(new_matches, db)
         return new_matches
+
+    def _notify_match_parties(self, matches: List[Match], db: Session) -> None:
+        """Notify both parties when a new match has been persisted."""
+        for match in matches:
+            seek_request = db.query(SeekRequest).filter(
+                SeekRequest.id == match.seek_request_id
+            ).first()
+            volunteer_request = db.query(VolunteerRequest).filter(
+                VolunteerRequest.id == match.volunteer_request_id
+            ).first()
+            if not seek_request or not volunteer_request:
+                continue
+
+            seeker = db.query(User).filter(User.id == seek_request.seeker_id).first()
+            volunteer = db.query(User).filter(
+                User.id == volunteer_request.volunteer_id
+            ).first()
+            if not seeker or not volunteer:
+                continue
+
+            travel = seek_request.travel_details
+            send_match_notification(
+                seeker_email=seeker.email,
+                volunteer_email=volunteer.email,
+                match_details={
+                    "flight_number": travel.get("flight_number"),
+                    "source": travel.get("source_airport"),
+                    "destination": travel.get("destination_airport"),
+                    "travel_time": travel.get("travel_time"),
+                },
+            )
 
     # ------------------------------------------------------------------
     # Match state transitions
     # ------------------------------------------------------------------
 
     def accept_match(self, match_id: str, db: Session) -> Optional[Match]:
-        """Accept a match"""
+        """Record the volunteer's acceptance of a match."""
         match = db.query(Match).filter(Match.id == match_id).first()
         if not match:
             return None
 
         match.status = MatchStatus.ACCEPTED
+        db.commit()
+        db.refresh(match)
+        logger.info(f"Match {match_id} accepted by volunteer")
+        return match
+
+    def confirm_match(self, match_id: str, db: Session) -> Optional[Match]:
+        """Record the seeker's acceptance and authorize contact exchange."""
+        match = db.query(Match).filter(Match.id == match_id).first()
+        if not match:
+            return None
+
         match.communication = {
             "contact_exchanged": True,
             "last_message_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         }
         db.commit()
         db.refresh(match)
-        logger.info(f"Match {match_id} accepted")
+        logger.info(f"Match {match_id} confirmed by seeker")
         return match
 
     def reject_match(self, match_id: str, db: Session) -> Optional[Match]:

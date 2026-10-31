@@ -352,7 +352,7 @@ Represents a connection between a seek request and volunteer request.
   "seek_request_id": "string (UUID)",
   "volunteer_request_id": "string (UUID)",
   "status": "string (pending|accepted|rejected|completed|cancelled)",
-  "match_score": "float", // algorithm-calculated compatibility score
+  "match_score": "float", // 1.0 indicates a match; not a ranked score
   "created_at": "datetime",
   "updated_at": "datetime",
   "communication": {
@@ -523,11 +523,10 @@ Calendar View Relationship:
        │                        │ 3. Add to Calendar     │                        │
        │                        │ 4. find_matches()      │                        │
        │                        ├───────────────────────►│                        │
-       │                        │                        │ 5. Notify Volunteers  │
-       │                        │                        ├───────────────────────►│
-       │                        │                        │                        │
-       │                        │                        │ 6. Create Match       │
+       │                        │                        │ 5. Create Match       │
        │                        │◄───────────────────────┤    Records & Log      │
+       │                        │                        │ 6. Notify Both Parties│
+       │                        │                        ├───────────────────────►│
        │                        │                        │                        │
        │ 7. Response: Seek      │                        │                        │
        │    Request Created     │                        │                        │
@@ -551,11 +550,10 @@ Calendar View Relationship:
        │                        │ 4. find_matches_for_   │                        │
        │                        │    volunteer()         │                        │
        │                        ├───────────────────────►│                        │
-       │                        │                        │ 5. Notify Seekers     │
-       │                        │                        ├───────────────────────►│
-       │                        │                        │                        │
-       │                        │                        │ 6. Create Match       │
+       │                        │                        │ 5. Create Match       │
        │                        │◄───────────────────────┤    Records & Log      │
+       │                        │                        │ 6. Notify Both Parties│
+       │                        │                        ├───────────────────────►│
        │                        │                        │                        │
        │ 7. Response: Volunteer │                        │                        │
        │    Request Created     │                        │                        │
@@ -565,39 +563,15 @@ Calendar View Relationship:
 ```
 
 ### Match Discovery & Acceptance Flow
-```
-┌─────────────┐         ┌─────────────┐         ┌─────────────┐         ┌──────────────┐
-│ VOLUNTEER   │         │   MATCH     │         │NOTIFICATION │         │   SEEKER     │
-│    or       │         │   SERVICE   │         │   SERVICE   │         │              │
-│   SEEKER    │         │             │         │             │         │              │
-└─────────────┘         └─────────────┘         └─────────────┘         └──────────────┘
-       │                        │                        │                        │
-       │ 1. GET /discover       │                        │                        │
-       │    View Matches        │                        │                        │
-       │    (pre-notified)      │                        │                        │
-       ├───────────────────────►│                        │                        │
-       │                        │ 2. Query Matches       │                        │
-       │                        │ 3. Get Details         │                        │
-       │                        │ 4. Return Ranked List  │                        │
-       │                        │                        │                        │
-       │ 5. Available Matches   │                        │                        │
-       │    List                │                        │                        │
-       │◄───────────────────────┤                        │                        │
-       │                        │                        │                        │
-       │ 6. Accept/Reject Match │                        │                        │
-       ├───────────────────────►│                        │                        │
-       │                        │ 7. Update Status       │                        │
-       │                        │    ACCEPTED            │                        │
-       │                        │ 8. Exchange Contacts   │                        │
-       │                        ├───────────────────────►│                        │
-       │                        │                        │ 9. Send Contact Info  │
-       │                        │                        ├───────────────────────►│
-       │                        │                        │                        │
-       │ 10. Contact Details    │                        │ 11. Contact Details   │
-       │     Received           │                        │     Received           │
-       │◄───────────────────────┤                        │◄───────────────────────│
-       │                        │                        │                        │
-```
+`GET /api/matches/discover` displays persisted matches for the current user's
+requests; it does not initiate matching or calculate a ranked list. Matching
+runs when seeker or volunteer requests are created or updated.
+
+The volunteer accepts a pending match with `POST /api/matches/{id}/accept`.
+The seeker can then confirm with `POST /api/matches/{id}/confirm` or deny it
+with `POST /api/matches/{id}/reject`. A volunteer can reject a pending match
+with the same reject endpoint. Contact details are emailed to both parties
+only after the seeker confirms.
 
 ### Complete Matching Process (Bi-directional)
 ```
@@ -615,14 +589,12 @@ Calendar View Relationship:
        │                   │                   │ Find matching     │                   │
        │                   │                   │ volunteers        │                   │
        │                   │                   ├──────────────────►│                   │
-       │                   │                   │                   │ 3A. Send          │
-       │                   │                   │                   │ notifications to  │
-       │                   │                   │                   │ volunteer emails  │
-       │                   │                   │                   ├──────────────────►│
-       │                   │                   │◄──────────────────┤                   │
-       │                   │                   │                   │ 4A. Create Match  │
-       │                   │                   │                   │ records           │
-       │ Response:         │                   │                   │◄──────────────────┤
+       │                   │                   │ 3A. Create Match  │                   │
+       │                   │                   │ records           │
+       │                   │                   ├──────────────────►│                   │
+       │                   │                   │ 4A. Notify both   │
+       │                   │                   │ parties           │
+       │ Response:         │                   │                   │
        │ SeekRequest       │                   │                   │                   │
        │ (no matches)      │                   │                   │                   │
        │◄──────────────────┤                   │                   │                   │
@@ -637,14 +609,12 @@ Calendar View Relationship:
        │                   │                   │ Find matching     │                   │
        │                   │                   │ seekers           │                   │
        │                   │                   ├──────────────────►│                   │
-       │                   │                   │                   │ 3B. Send          │
-       │                   │                   │                   │ notifications to  │
-       │                   │                   │                   │ seeker emails     │
-       │                   │                   │                   ├──────────────────►│
-       │                   │                   │◄──────────────────┤                   │
-       │                   │                   │                   │ 4B. Create Match  │
-       │                   │                   │                   │ records           │
-       │ Response:         │                   │                   │◄──────────────────┤
+       │                   │                   │ 3B. Create Match  │
+       │                   │                   │ records           │
+       │                   │                   ├──────────────────►│
+       │                   │                   │ 4B. Notify both   │
+       │                   │                   │ parties           │
+       │ Response:         │                   │                   │
        │ VolunteerRequest  │                   │                   │                   │
        │ (no matches)      │                   │                   │                   │
        │                   │◄──────────────────┤                   │                   │
@@ -655,20 +625,20 @@ Calendar View Relationship:
        ├──────────────────────────────────────►│                   │                   │
        │                   ├──────────────────────────────────────►│                   │
        │                   │                   │                   │                   │
-       │ 7. Accept/Reject  │                   │                   │                   │
-       │ Match             │                   │                   │                   │
+       │ 7. Volunteer accepts match            │                   │                   │
        ├─────────────────────────────────────────────────────────►│                   │
        │                   │                   │                   │                   │
-       │ 8. Contact        │                   │ 5. Exchange       │                   │
-       │ Exchange          │                   │ Contacts via      │                   │
-       │ (via email)       │                   │ Email             │                   │
-       │◄─────────────────────────────────────►│◄──────────────────┤                   │
+       │ 8. Seeker confirms or denies          │                   │                   │
+       ├─────────────────────────────────────────────────────────►│                   │
        │                   │                   │                   │                   │
-       │ 9. Travel         │                   │                   │                   │
+       │ 9. Email contacts after confirmation  │                   │                   │
+       │◄─────────────────────────────────────►│                   │                   │
+       │                   │                   │                   │                   │
+       │ 10. Travel        │                   │                   │                   │
        │ Assistance        │                   │                   │                   │
        │◄─────────────────►│                   │                   │                   │
        │                   │                   │                   │                   │
-       │ 10. Mark Complete │                   │                   │                   │
+       │ 11. Mark Complete │                   │                   │                   │
        ├──────────────────►│                   │                   │                   │
 ```
 
@@ -991,7 +961,7 @@ Calendar View Relationship:
 }
 ```
 
-#### Accept Seek Request
+#### Volunteer Accepts Match
 **Endpoint:** `POST /api/matches/{match_id}/accept`
 **Authorization:** Bearer token (volunteer only)
 
@@ -1002,11 +972,6 @@ Calendar View Relationship:
   "data": {
     "match_id": "string (UUID)",
     "status": "accepted",
-    "seeker_contact": {
-      "name": "string",
-      "email": "string",
-      "phone": "string"
-    },
     "travel_details": {
       "travel_time": "datetime",
       "source_airport": "string",
@@ -1014,13 +979,19 @@ Calendar View Relationship:
       "flight_number": "string"
     }
   },
-  "message": "Seek request accepted successfully"
+  "message": "Match accepted; seeker confirmation is still required"
 }
 ```
 
-#### Reject Seek Request
+#### Seeker Confirms Match
+**Endpoint:** `POST /api/matches/{match_id}/confirm`
+**Authorization:** seeker only; match must be volunteer-accepted
+
+Contact details are emailed to both parties only after this confirmation.
+
+#### Reject or Deny Match
 **Endpoint:** `POST /api/matches/{match_id}/reject`
-**Authorization:** Bearer token (volunteer only)
+**Authorization:** volunteer for pending matches; seeker after volunteer acceptance
 
 **Input:**
 ```json
@@ -1102,10 +1073,11 @@ Similar structure to seeker operations, with endpoints:
 **Authorization:** Bearer token
 
 **Query Parameters:**
-- `request_id`: string (UUID) - find matches for specific request
-- `airport`: string (optional) - filter by airport
-- `date_range`: string (optional) - filter by date range
+- `request_id`: string (UUID, optional) - display matches for a specific request
 
+This endpoint returns persisted matches. Matching is triggered when a seeker
+or volunteer request is created or updated; discovery does not initiate
+matching or rank results.
 **Output:**
 ```json
 {
@@ -1184,8 +1156,8 @@ All API endpoints follow a consistent error response format:
                      │ 2. Validate & Save Seek Request           │
                      │ 3. Create Calendar Event                  │
                      │ 4. Call find_matches() Algorithm          │
-                     │ 5. Notify Matching Volunteers via Email   │
-                     │ 6. Create Match Records in Database       │
+                     │ 5. Persist Match Records                  │
+                     │ 6. Notify Both Parties via Email          │
                      └─────────────────────┬─────────────────────┘
                                            │
 [SEEKER] ◄──7. SeekRequest Created────────┘
@@ -1199,8 +1171,8 @@ All API endpoints follow a consistent error response format:
                          │ 9. Validate & Save Volunteer Request         │
                          │ 10. Create Calendar Event                    │
                          │ 11. Call find_matches_for_volunteer()        │
-                         │ 12. Notify Matching Seekers via Email        │
-                         │ 13. Create Match Records in Database         │
+                         │ 12. Persist Match Records                    │
+                         │ 13. Notify Both Parties via Email            │
                          └─────────────────────┬─────────────────────────┘
                                                │
 [VOLUNTEER] ◄──14. VolunteerRequest Created───┘
@@ -1212,9 +1184,8 @@ All API endpoints follow a consistent error response format:
                  │          MATCH SERVICE                                │
                  │                                                       │
                  │ 16. Query Matches for Seeker's Requests             │
-                 │ 17. Get Volunteer Details (Email Notified)          │
-                 │ 18. Calculate Match Scores (Sorted)                 │
-                 │ 19. Return Ranked Matches                           │
+                 │ 17. Get Volunteer Details                           │
+                 │ 18. Return Persisted Matches                        │
                  └───────────────────────────┬───────────────────────────┘
                                              │
 [SEEKER] ◄──20. Available Matches List───────┘
@@ -1225,25 +1196,25 @@ All API endpoints follow a consistent error response format:
                    │          MATCH SERVICE                                │
                    │                                                       │
                    │ 22. Query Matches for Volunteer's Requests          │
-                   │ 23. Get Seeker Details (Email Notified)             │
-                   │ 24. Calculate Match Scores (Sorted)                 │
-                   │ 25. Return Ranked Matches                           │
+                   │ 23. Get Seeker Details                              │
+                   │ 24. Return Persisted Matches                        │
                    └─────────────────────────────┬─────────────────────────┘
                                                 │
 [VOLUNTEER] ◄──26. Available Matches List───────┘
 
-[VOLUNTEER/SEEKER] ──27. POST /api/matches/{id}/accept──► [API]
+[VOLUNTEER] ──27. POST /api/matches/{id}/accept──► [API]
                                                           │
                               ┌──────────────────────────▼──────────────────────────┐
                               │             MATCH SERVICE                           │
                               │                                                     │
-                              │ 28. Update Match Status to ACCEPTED                │
-                              │ 29. Exchange Contact Information                    │
-                              │ 30. Send Contact Exchange Emails to Both Parties    │
-                              │ 31. Update Calendar Events                         │
+                              │ 28. Record volunteer acceptance                   │
+                              │ 29. Seeker confirms or rejects                    │
+                              │ 30. Exchange contacts only after confirmation      │
                               └──────────────────────────┬──────────────────────────┘
                                                         │
-[VOLUNTEER/SEEKER] ◄──32. Contact Exchange Successful──┘
+[SEEKER] ──POST /api/matches/{id}/confirm──► [API]
+                                               │
+                         Contacts emailed to both parties after confirmation
 ```
 
 **Key Flow Steps:**
@@ -1268,9 +1239,9 @@ All API endpoints follow a consistent error response format:
 - Volunteer sees seekers who need help (notified by email)
 
 **Phase 4: Match Acceptance**
-- `POST /api/matches/{id}/accept` → Either party accepts
-- Contact details exchanged via email
-- Match status changes to `ACCEPTED`
+- `POST /api/matches/{id}/accept` → Volunteer accepts a pending match
+- Seeker confirms with `/confirm` or denies with `/reject`
+- Contact details are exchanged only after seeker confirmation
 
 ### 2. Matching Algorithm Flow (Bi-directional)
 
@@ -1285,50 +1256,38 @@ All API endpoints follow a consistent error response format:
 │ Input: New Seek Request                                                 │
 │   ├─ Travel Details (Airport, Time, Flight)                            │
 │   ├─ Assistance Needed (Categories, Requirements)                       │
-│   └─ User Profile (Language, Preferences)                              │
 │                                                                         │
 │ Step 1A: find_matches() - Find Volunteer Matches                       │
 │   ├─ Query all ACTIVE volunteer requests                               │
 │   ├─ For each volunteer request:                                       │
-│   │  ├─ Calculate Compatibility Score (0-100)                          │
-│   │  │  ├─ Route Match: 40 points (same src/dest)                      │
-│   │  │  ├─ Flight Match: 30 points (same flight)                       │
-│   │  │  ├─ Time Proximity: 30 points (±4 hours)                        │
-│   │  │  ├─ Language Match: 10 points                                   │
-│   │  │  └─ Category Match: 10 points (assistance overlap)              │
-│   │  │                                                                  │
-│   │  ├─ If score ≥ 50 (min_score):                                     │
+│   │  ├─ Require the same source and destination airports                 │
+│   │  ├─ Require the same non-empty flight number OR times within buffer │
+│   │  ├─ If the predicate matches:                                       │
 │   │  │  ├─ Create Match record (status: PENDING)                       │
-│   │  │  ├─ Send Email to Volunteer                                     │
+│   │  │  ├─ Send match-found email to both parties                       │
 │   │  │  │  ├─ Subject: "New Travel Assistance Match Found - Yatra"    │
-│   │  │  │  ├─ Body: Match details, volunteer's assistance info        │
 │   │  │  │  └─ Call to action: Log in to discover matches              │
-│   │  │  ├─ Log: "Match notification sent - Match ID: ..., Score: ..." │
-│   │  │  └─ Store in Database                                          │
+│   │  │  └─ Store match_score=1.0 as a match indicator                  │
 │   │                                                                     │
 │ ◄─── SCENARIO B: Volunteer Creates Request ───►                       │
 │                                                                         │
 │ Input: New Volunteer Request                                            │
 │   ├─ Travel Details (Airport, Time, Flight)                            │
 │   ├─ Assistance Offered (Categories, Skills)                           │
-│   └─ User Profile (Languages Spoken, Experience)                       │
 │                                                                         │
 │ Step 1B: find_matches_for_volunteer() - Find Seeker Matches            │
 │   ├─ Query all ACTIVE seek requests                                    │
 │   ├─ For each seek request:                                            │
-│   │  ├─ Calculate Compatibility Score (0-100) [SAME ALGORITHM]         │
-│   │  │                                                                  │
-│   │  ├─ If score ≥ 50 (min_score):                                     │
+│   │  ├─ Apply the same route, flight-number, and time predicate          │
+│   │  ├─ If the predicate matches:                                       │
 │   │  │  ├─ Create Match record (status: PENDING)                       │
-│   │  │  ├─ Send Email to Seeker                                        │
+│   │  │  ├─ Send match-found email to both parties                       │
 │   │  │  │  ├─ Subject: "New Travel Assistance Match Found - Yatra"    │
-│   │  │  │  ├─ Body: Match details, volunteer's assistance info        │
 │   │  │  │  └─ Call to action: Log in to discover matches              │
-│   │  │  ├─ Log: "Match notification sent - Match ID: ..., Score: ..." │
-│   │  │  └─ Store in Database                                          │
+│   │  │  └─ Store match_score=1.0 as a match indicator                  │
 │                                                                         │
 │ OUTPUT: Multiple Match Records                                          │
-│   └─ Ready for Discovery & Review by Both Parties                       │
+│   └─ Pending matches are available to both parties for review            │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1387,47 +1346,22 @@ Visual Calendar Layout:
 
 ### 3. Matching Algorithm Flow
 
-**Smart Matching Process:**
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                      MATCHING ALGORITHM                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│ Input: New Seek Request                                                 │
-│   ├─ Travel Details (Airport, Time, Flight)                            │
-│   ├─ Assistance Needed (Categories, Requirements)                       │
-│   └─ User Profile (Language, Preferences)                              │
-│                                                                         │
-│ Step 1: Primary Filters                                                │
-│   ├─ Same Route (Source → Destination)                                 │
-│   ├─ Time Window (±4 hours)                                            │
-│   ├─ Available Volunteers                                               │
-│   └─ Active Requests Only                                               │
-│                                                                         │
-│ Step 2: Compatibility Scoring                                          │
-│   ├─ Route Match: 40 points                                            │
-│   ├─ Time Proximity: 30 points                                         │
-│   ├─ Language Match: 20 points                                         │
-│   ├─ Category Match: 10 points                                         │
-│   └─ Total Score: 0-100                                                │
-│                                                                         │
-│ Step 3: Ranking & Notification                                         │
-│   ├─ Sort by Score (Highest First)                                     │
-│   ├─ Apply Business Rules                                               │
-│   ├─ Notify Top 5 Volunteers                                           │
-│   └─ Store Matches in Database                                          │
-│                                                                         │
-│ Output: Ranked Match List                                               │
-│   └─ Ready for Volunteer Review                                        │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+Matching is a boolean predicate, evaluated when a seeker or volunteer request
+is created or updated:
+
+1. Both requests must have the same source and destination airports.
+2. They must have either the same non-empty flight number or departure times
+   within `MATCH_TIME_BUFFER_HOURS` (default: four hours).
+3. Each matching pair is persisted with `match_score=1.0`; there is no weighted
+   score, threshold, or ranking. A newly persisted match triggers email
+   notifications to both parties.
 
 ---
 
 ## Security Considerations
 
 ### Data Privacy
-- Personal contact information only shared after match acceptance
+- Personal contact information only shared after both parties accept
 - Option to use platform messaging before contact exchange
 - Automatic data cleanup after travel completion
 

@@ -33,7 +33,7 @@ Phase 1 focuses on solving core problems with essential features, building a fou
 ## Not implemented in current code
 
 - Refresh token issuance/rotation endpoint
-- Point-based weighted matching score (stored score is `1.0` for matches)
+- Boolean route/flight/time matching predicate (stored score is `1.0`)
 - Public unauthenticated calendar browsing
 - Full migration framework (manual scripts are used when needed)
 
@@ -111,9 +111,9 @@ Current test suite (`src/tests`) passes with `pytest`.
 ### 3. Basic Flight Matching System ✅
 
 **Core Parameters:**
-- ✅ **Flight Number** - Primary matching criterion (30 points)
-- ✅ **Route** - Source and destination airports (40 points)
-- ✅ **Travel Time** - Date and time proximity (30 points)
+- Requests must have the same source and destination airports.
+- They must have either the same non-empty flight number or departure times
+  within `MATCH_TIME_BUFFER_HOURS` (default: four hours).
 
 **Optional Parameters:**
 - ✅ **Seat Number** - Stored in travel details
@@ -135,10 +135,11 @@ The matching service uses a boolean predicate (not a point-based score):
 **No minimum score threshold** is enforced; any pair satisfying the predicate is persisted.
 
 **API Endpoints:**
-- `GET /api/matches/discover` - Find compatible matches
+- `GET /api/matches/discover` - Display persisted matches (matching runs on request create/update)
 - `GET /api/matches/{id}` - Get match details
-- `POST /api/matches/{id}/accept` - Accept match (volunteer)
-- `POST /api/matches/{id}/reject` - Reject match (volunteer)
+- `POST /api/matches/{id}/accept` - Volunteer accepts a pending match
+- `POST /api/matches/{id}/confirm` - Seeker confirms a volunteer-accepted match
+- `POST /api/matches/{id}/reject` - Volunteer rejects pending match or seeker denies accepted match
 
 **Code Files:**
 - `src/app/models/match.py` - Match model
@@ -149,20 +150,19 @@ The matching service uses a boolean predicate (not a point-based score):
 ### 4. Simple Email Notifications ✅
 
 **Notification Types:**
-1. **Match Found:** Sent to both seeker and volunteer when a match is discovered
-2. **Match Accepted:** Sent when volunteer accepts a match
-3. **Contact Exchange:** Shares contact details after acceptance
+1. **Match Found:** Sent to both seeker and volunteer when a new match is persisted
+2. **Contact Exchange:** Shares contact details after the seeker confirms the volunteer's acceptance
 
 **Email Content:**
 - Travel details (flight, route, date)
 - Match information
-- Contact details (after acceptance)
+- Contact details (after both parties accept)
 - Action links (via platform)
 
 **Configuration:**
 - SMTP host, port, username, password
 - Configurable in `.env` file
-- Optional for development (warnings only if not configured)
+- `EMAIL_LOG_ONLY=true` logs messages; SMTP delivery requires `EMAIL_LOG_ONLY=false`
 
 **Code Files:**
 - `src/app/utils/email.py` - Email service and templates
@@ -170,8 +170,8 @@ The matching service uses a boolean predicate (not a point-based score):
 ### 5. Contact Exchange Mechanism ✅
 
 **Privacy-First Approach:**
-- Contact details NOT shared until match is accepted
-- Explicit acceptance required from volunteer
+- Contact details NOT shared until both parties accept
+- The volunteer accepts first; the seeker then confirms or denies
 - Automatic email notification with contact info
 - Secure token-based authorization
 
